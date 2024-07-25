@@ -20,10 +20,17 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, cast
 
 import requests
+from genai_perf import utils
 from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_ORCA
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.synthetic_image_generator import (
+    ImageFormat,
+    SyntheticImageGenerator,
+)
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import DEFAULT_TOKENIZER, Tokenizer, get_tokenizer
+from genai_perf.utils import load_json_str
+from PIL import Image
 from requests import Response
 
 
@@ -42,6 +49,7 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
+    OPENAI_VISION = auto()
     RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
@@ -74,6 +82,11 @@ class LlmInputs:
     DEFAULT_OUTPUT_TOKENS_STDDEV = 0
     DEFAULT_NUM_PROMPTS = 100
 
+    DEFAULT_IMAGE_WIDTH_MEAN = 100
+    DEFAULT_IMAGE_WIDTH_STDDEV = 0
+    DEFAULT_IMAGE_HEIGHT_MEAN = 100
+    DEFAULT_IMAGE_HEIGHT_STDDEV = 0
+
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_OPENAI_PA_FORMAT: Dict = {"data": []}
@@ -96,6 +109,11 @@ class LlmInputs:
         output_tokens_deterministic: bool = False,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
+        image_width_mean: int = DEFAULT_IMAGE_WIDTH_MEAN,
+        image_width_stddev: int = DEFAULT_IMAGE_WIDTH_STDDEV,
+        image_height_mean: int = DEFAULT_IMAGE_HEIGHT_MEAN,
+        image_height_stddev: int = DEFAULT_IMAGE_HEIGHT_STDDEV,
+        image_format: ImageFormat = ImageFormat.PNG,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -138,8 +156,18 @@ class LlmInputs:
             The standard deviation of the length of the output to generate. This is only used if output_tokens_mean is provided.
         output_tokens_deterministic:
             If true, the output tokens will set the minimum and maximum tokens to be equivalent.
+        image_width_mean:
+            The mean width of images when generating synthetic image data.
+        image_width_stddev:
+            The standard deviation of width of images when generating synthetic image data.
+        image_height_mean:
+            The mean height of images when generating synthetic image data.
+        image_height_stddev:
+            The standard deviation of height of images when generating synthetic image data.
+        image_format:
+            The compression format of the images.
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
         Required Synthetic Prompt Generation Parameters
         -----------------------------------------------
@@ -174,6 +202,11 @@ class LlmInputs:
             prompt_tokens_mean,
             prompt_tokens_stddev,
             num_of_output_prompts,
+            image_width_mean,
+            image_width_stddev,
+            image_height_mean,
+            image_height_stddev,
+            image_format,
             batch_size,
             input_filename,
         )
@@ -209,6 +242,11 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
         batch_size: int,
         input_filename: Optional[Path],
     ) -> Dict:
@@ -235,8 +273,18 @@ class LlmInputs:
             The standard deviation of the length of the prompt to generate
         num_of_output_prompts:
             The number of synthetic output prompts to generate
+        image_width_mean:
+            The mean width of images when generating synthetic image data.
+        image_width_stddev:
+            The standard deviation of width of images when generating synthetic image data.
+        image_height_mean:
+            The mean height of images when generating synthetic image data.
+        image_height_stddev:
+            The standard deviation of height of images when generating synthetic image data.
+        image_format:
+            The compression format of the images.
         batch_size:
-            The number of inputs per request (currently only used for v1/embeddings)
+            The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
             The path to the input file containing the prompts in JSONL format.
         Returns
@@ -279,6 +327,12 @@ class LlmInputs:
             )
         else:
             if input_type == PromptSource.DATASET:
+                # (TMA-1990) support VLM input from public dataset
+                if output_format == OutputFormat.OPENAI_VISION:
+                    raise GenAIPerfException(
+                        f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
+                        "does not support dataset as input."
+                    )
                 dataset = cls._get_input_dataset_from_url(
                     dataset_name, starting_index, length
                 )
@@ -291,6 +345,12 @@ class LlmInputs:
                     prompt_tokens_mean,
                     prompt_tokens_stddev,
                     num_of_output_prompts,
+                    image_width_mean,
+                    image_width_stddev,
+                    image_height_mean,
+                    image_height_stddev,
+                    image_format,
+                    output_format,
                 )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
@@ -300,6 +360,9 @@ class LlmInputs:
             elif input_type == PromptSource.FILE:
                 input_filename = cast(Path, input_filename)
                 input_file_dataset = cls._get_input_dataset_from_file(input_filename)
+                input_file_dataset = cls._encode_images_in_input_dataset(
+                    input_file_dataset
+                )
                 generic_dataset_json = (
                     cls._convert_input_synthetic_or_file_dataset_to_generic_json(
                         input_file_dataset
@@ -308,6 +371,14 @@ class LlmInputs:
             else:
                 raise GenAIPerfException("Input source is not recognized.")
 
+            # When the generic_dataset_json contains multi-modal data (e.g. images),
+            # convert the format of the content to OpenAI multi-modal format:
+            # see https://platform.openai.com/docs/guides/vision
+            if output_format == OutputFormat.OPENAI_VISION:
+                generic_dataset_json = cls._convert_to_openai_multi_modal_content(
+                    generic_dataset_json
+                )
+
         return generic_dataset_json
 
     @classmethod
@@ -315,7 +386,7 @@ class LlmInputs:
         cls, input_filename: Path, batch_size: int, num_prompts: int
     ) -> Dict[str, Any]:
         with open(input_filename, "r") as file:
-            file_content = [json.loads(line) for line in file]
+            file_content = [load_json_str(line) for line in file]
 
         texts = [item["text"] for item in file_content]
 
@@ -344,11 +415,11 @@ class LlmInputs:
     ) -> Dict[str, Any]:
 
         with open(queries_filename, "r") as file:
-            queries_content = [json.loads(line) for line in file]
+            queries_content = [load_json_str(line) for line in file]
         queries_texts = [item for item in queries_content]
 
         with open(passages_filename, "r") as file:
-            passages_content = [json.loads(line) for line in file]
+            passages_content = [load_json_str(line) for line in file]
         passages_texts = [item for item in passages_content]
 
         if batch_size > len(passages_texts):
@@ -363,7 +434,7 @@ class LlmInputs:
         for _ in range(num_prompts):
             sampled_texts = random.sample(passages_texts, batch_size)
             query_sample = random.choice(queries_texts)
-            entry_dict = {}
+            entry_dict: Dict = {}
             entry_dict["query"] = query_sample
             entry_dict["passages"] = sampled_texts
             dataset_json["rows"].append({"row": {"payload": entry_dict}})
@@ -404,17 +475,36 @@ class LlmInputs:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
+        output_format: OutputFormat,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for _ in range(num_of_output_prompts):
+            row: Dict["str", Any] = {"row": {}}
             synthetic_prompt = cls._create_synthetic_prompt(
                 tokenizer,
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
             )
-            dataset_json["rows"].append({"row": {"text_input": synthetic_prompt}})
+            row["row"]["text_input"] = synthetic_prompt
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                synthetic_image = cls._create_synthetic_image(
+                    image_width_mean=image_width_mean,
+                    image_width_stddev=image_width_stddev,
+                    image_height_mean=image_height_mean,
+                    image_height_stddev=image_height_stddev,
+                    image_format=image_format,
+                )
+                row["row"]["image"] = synthetic_image
+
+            dataset_json["rows"].append(row)
 
         return dataset_json
 
@@ -496,29 +586,37 @@ class LlmInputs:
     @classmethod
     def _get_input_dataset_from_file(cls, input_filename: Path) -> Dict:
         """
-        Reads the input prompts from a JSONL file and converts them into the required dataset format.
+        Reads the input prompts and images from a JSONL file and converts them
+        into the required dataset format.
 
         Parameters
         ----------
         input_filename : Path
-            The path to the input file containing the prompts in JSONL format.
+            The path to the input file containing the prompts and/or images in
+            JSONL format.
 
         Returns
         -------
         Dict
-            The dataset in the required format with the prompts read from the file.
+            The dataset in the required format with the prompts and/or images
+            read from the file.
         """
         cls.verify_file(input_filename)
-        input_file_prompts = cls._get_prompts_from_input_file(input_filename)
+        prompts, images = cls._get_prompts_from_input_file(input_filename)
         dataset_json: Dict[str, Any] = {}
         dataset_json["features"] = [{"name": "text_input"}]
-        dataset_json["rows"] = [
-            {"row": {"text_input": prompt}} for prompt in input_file_prompts
-        ]
+        dataset_json["rows"] = []
+        for prompt, image in zip(prompts, images):
+            content = {"text_input": prompt}
+            content.update({"image": image} if image else {})
+            dataset_json["rows"].append({"row": content})
+
         return dataset_json
 
     @classmethod
-    def _get_prompts_from_input_file(cls, input_filename: Path) -> List[str]:
+    def _get_prompts_from_input_file(
+        cls, input_filename: Path
+    ) -> Tuple[List[str], List[str]]:
         """
         Reads the input prompts from a JSONL file and returns a list of prompts.
 
@@ -529,20 +627,62 @@ class LlmInputs:
 
         Returns
         -------
-        List[str]
-            A list of prompts read from the file.
+        Tuple[List[str], List[str]]
+            A list of prompts and images read from the file.
         """
         prompts = []
+        images = []
         with open(input_filename, mode="r", newline=None) as file:
             for line in file:
                 if line.strip():
-                    prompts.append(json.loads(line).get("text_input", "").strip())
-        return prompts
+                    prompts.append(load_json_str(line).get("text_input", "").strip())
+                    images.append(load_json_str(line).get("image", "").strip())
+        return prompts, images
 
     @classmethod
     def verify_file(cls, input_filename: Path) -> None:
         if not input_filename.exists():
             raise FileNotFoundError(f"The file '{input_filename}' does not exist.")
+
+    @classmethod
+    def _convert_to_openai_multi_modal_content(
+        cls, generic_dataset_json: Dict[str, List[Dict]]
+    ) -> Dict[str, List[Dict]]:
+        """
+        Converts to multi-modal content format of OpenAI Chat Completions API.
+        """
+        for row in generic_dataset_json["rows"]:
+            if row["image"]:
+                row["text_input"] = [
+                    {
+                        "type": "text",
+                        "text": row["text_input"],
+                    },
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": row["image"]},
+                    },
+                ]
+
+        return generic_dataset_json
+
+    @classmethod
+    def _encode_images_in_input_dataset(cls, input_file_dataset: Dict) -> Dict:
+        for row in input_file_dataset["rows"]:
+            filename = row["row"].get("image")
+            if filename:
+                img = Image.open(filename)
+                if img.format.lower() not in utils.get_enum_names(ImageFormat):
+                    raise GenAIPerfException(
+                        f"Unsupported image format '{img.format}' of "
+                        f"the image '{filename}'."
+                    )
+
+                img_base64 = utils.encode_image(img, img.format)
+                payload = f"data:image/{img.format.lower()};base64,{img_base64}"
+                row["row"]["image"] = payload
+
+        return input_file_dataset
 
     @classmethod
     def _convert_generic_json_to_output_format(
@@ -558,7 +698,10 @@ class LlmInputs:
         model_name: list = [],
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict:
-        if output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS:
+        if (
+            output_format == OutputFormat.OPENAI_CHAT_COMPLETIONS
+            or output_format == OutputFormat.OPENAI_VISION
+        ):
             output_json = cls._convert_generic_json_to_openai_chat_completions_format(
                 generic_dataset,
                 add_model_name,
@@ -734,6 +877,16 @@ class LlmInputs:
         return pa_json
 
     @classmethod
+    def contains_rankings_tei(cls, extra_inputs: Optional[Dict]) -> bool:
+        """
+        Check if user specified that they are using the Hugging Face
+        Text Embeddings Interface for ranking models
+        """
+        if extra_inputs and extra_inputs.get("rankings") == "tei":
+            return True
+        return False
+
+    @classmethod
     def _convert_generic_json_to_rankings_format(
         cls,
         generic_dataset: Dict,
@@ -742,6 +895,7 @@ class LlmInputs:
         model_selection_strategy: ModelSelectionStrategy = ModelSelectionStrategy.ROUND_ROBIN,
     ) -> Dict[str, Any]:
         pa_json: Dict[str, Any] = {"data": []}
+        use_tei_format = cls.contains_rankings_tei(extra_inputs)
 
         for index, entry in enumerate(generic_dataset["rows"]):
             iter_model_name = cls._select_model_name(
@@ -749,25 +903,36 @@ class LlmInputs:
             )
             payload = entry.get("payload", {})
             query_values = payload.get("query")
-            passage_values = payload.get("passages")
+
+            if use_tei_format:
+                passage_values = payload.get("passages", [])
+                passage_values = [item.get("text", "") for item in passage_values]
+            else:
+                passage_values = payload.get("passages")
 
             if query_values is None:
                 raise ValueError("Missing required fields 'query' in dataset entry")
             if passage_values is None:
-                raise ValueError("Missing required fields 'passages' in dataset entry")
+                raise ValueError(
+                    f"Missing required fields '{'texts' if use_tei_format else 'passages'}' in dataset entry"
+                )
             if not isinstance(passage_values, list):
                 raise ValueError(
-                    f"Required field 'query' must be a list (actual: {type(query_values)})"
+                    f"Required field '{'texts' if use_tei_format else 'passages'}' must be a list (actual: {type(passage_values)})"
                 )
 
-            payload = {
-                "query": query_values,
-                "passages": passage_values,
-                "model": iter_model_name,
-            }
+            if use_tei_format:
+                payload = {"query": query_values["text"], "texts": passage_values}
+            else:
+                payload = {
+                    "query": query_values,
+                    "passages": passage_values,
+                    "model": iter_model_name,
+                }
 
             for key, value in extra_inputs.items():
-                payload[key] = value
+                if not (key == "rankings" and value == "tei"):
+                    payload[key] = value
 
             pa_json["data"].append({"payload": [payload]})
 
@@ -1400,4 +1565,21 @@ class LlmInputs:
     ) -> str:
         return SyntheticPromptGenerator.create_synthetic_prompt(
             tokenizer, prompt_tokens_mean, prompt_tokens_stddev
+        )
+
+    @classmethod
+    def _create_synthetic_image(
+        cls,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
+    ) -> str:
+        return SyntheticImageGenerator.create_synthetic_image(
+            image_width_mean=image_width_mean,
+            image_width_stddev=image_width_stddev,
+            image_height_mean=image_height_mean,
+            image_height_stddev=image_height_stddev,
+            image_format=image_format,
         )

@@ -63,6 +63,7 @@ namespace openai {
 void
 ChatCompletionRequest::SendResponse(bool is_final, bool is_null)
 {
+  final_response_sent_ = is_final;
   response_callback_(new ChatCompletionResult(
       http_code_, std::move(response_buffer_), is_final, is_null, request_id_));
 }
@@ -172,7 +173,11 @@ ChatCompletionClient::AsyncInfer(
     request->timer_.CaptureTimestamp(
         triton::client::RequestTimers::Kind::REQUEST_END);
     UpdateInferStat(request->timer_);
-    if (!request->is_stream_) {
+
+    // Send final response on request completion
+    // if it has not already been sent.
+    // (e.g. in the case of seeing [DONE] in streaming case)
+    if (!request->IsFinalResponseSent()) {
       request->SendResponse(true /* is_final */, false /* is_null */);
     }
   };

@@ -29,13 +29,13 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 # GenAI-Perf
 
 GenAI-Perf is a command line tool for measuring the throughput and latency of
-generative AI models as served through an inference server. For large language
-models (LLMs), GenAI-Perf provides metrics such as
+generative AI models as served through an inference server.
+For large language models (LLMs), GenAI-Perf provides metrics such as
 [output token throughput](#output_token_throughput_metric),
 [time to first token](#time_to_first_token_metric),
 [inter token latency](#inter_token_latency_metric), and
-[request throughput](#request_throughput_metric). For a full list of metrics
-please see the [Metrics section](#metrics).
+[request throughput](#request_throughput_metric).
+For a full list of metrics please see the [Metrics section](#metrics).
 
 Users specify a model name, an inference server URL, the type of inputs to use
 (synthetic or from dataset), and the type of load to generate (number of
@@ -43,41 +43,56 @@ concurrent requests, request rate).
 
 GenAI-Perf generates the specified load, measures the performance of the
 inference server and reports the metrics in a simple table as console output.
-The tool also logs all results in a csv file that can be used to derive
+The tool also logs all results in a csv and json file that can be used to derive
 additional metrics and visualizations. The inference server must already be
 running when GenAI-Perf is run.
+
+You can use GenAI-Perf to run performance benchmarks on
+- [Large Language Models](docs/tutorial.md)
+- [Vision Language Models](docs/multi_modal.md)
+- [Embedding Models](docs/embeddings.md)
+- [Ranking Models](docs/rankings.md)
+- [Multiple LoRA Adapters](docs/lora.md)
 
 > [!Note]
 > GenAI-Perf is currently in early release and under rapid development. While we
 > will try to remain consistent, command line options and functionality are
 > subject to change as the tool matures.
 
-# Installation
+</br>
 
-## Triton SDK Container
+<!--
+======================
+INSTALLATION
+======================
+-->
 
-Available starting with the 24.03 release of the
+## Installation
+
+The easiest way to install GenAI-Perf is through
 [Triton Server SDK container](https://ngc.nvidia.com/catalog/containers/nvidia:tritonserver).
-
-Run the Triton Inference Server SDK docker container:
+Install the latest release using the following command:
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --gpus=all  nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
+
+# Check out genai_perf command inside the container:
+genai-perf --help
 ```
 
 <details>
 
 <summary>Alternatively, to install from source:</summary>
 
-## From Source
-
-GenAI-Perf depends on Perf Analyzer. Here is how to install Perf Analyzer:
+Since GenAI-Perf depends on Perf Analyzer,
+you'll need to install the Perf Analyzer binary:
 
 ### Install Perf Analyzer (Ubuntu, Python 3.8+)
 
-Note: you must already have CUDA 12 installed.
+**NOTE**: you must already have CUDA 12 installed
+(checkout the [CUDA installation guide](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html)).
 
 ```bash
 pip install tritonclient
@@ -85,84 +100,71 @@ pip install tritonclient
 apt update && apt install -y --no-install-recommends libb64-0d libcurl4
 ```
 
-Alternatively, you can install Perf Analyzer
-[from source](../docs/install.md#build-from-source).
+You can also build Perf Analyzer [from source](../docs/install.md#build-from-source) as well.
 
 ### Install GenAI-Perf from source
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+git clone https://github.com/triton-inference-server/client.git && cd client
 
-pip install "git+https://github.com/triton-inference-server/client.git@r${RELEASE}#subdirectory=src/c++/perf_analyzer/genai-perf"
+pip install -e .
 ```
 
 </details>
+
 </br>
 
-Run GenAI-Perf:
+<!--
+======================
+QUICK START
+======================
+-->
+
+## Quick Start
+
+In this quick start, we will use GenAI-Perf to run performance benchmarking on
+the GPT-2 model running on Triton Inference Server with a TensorRT-LLM engine.
+
+### Serve GPT-2 TensorRT-LLM model using Triton CLI
+
+You can follow the [quickstart guide](https://github.com/triton-inference-server/triton_cli?tab=readme-ov-file#serving-a-trt-llm-model)
+on Triton CLI github repo to run GPT-2 model locally.
+The full instructions are copied below for convenience:
 
 ```bash
-genai-perf --help
-```
+# This container comes with all of the dependencies for building TRT-LLM engines
+# and serving the engine with Triton Inference Server.
+docker run -ti \
+    --gpus all \
+    --network=host \
+    --shm-size=1g --ulimit memlock=-1 \
+    -v /tmp:/tmp \
+    -v ${HOME}/models:/root/models \
+    -v ${HOME}/.cache/huggingface:/root/.cache/huggingface \
+    nvcr.io/nvidia/tritonserver:24.05-trtllm-python-py3
 
-# Quick Start
+# Install the Triton CLI
+pip install git+https://github.com/triton-inference-server/triton_cli.git@0.0.8
 
-## Measuring Throughput and Latency of GPT2 using Triton + TensorRT-LLM
-
-### Running GPT2 on Triton Inference Server using TensorRT-LLM
-
-<details>
-<summary>See instructions</summary>
-
-1. Run Triton Inference Server with TensorRT-LLM backend container:
-
-```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
-
-docker run -it --net=host --rm --gpus=all --shm-size=2g --ulimit memlock=-1 --ulimit stack=67108864 nvcr.io/nvidia/tritonserver:${RELEASE}-trtllm-python-py3
-```
-
-2. Install Triton CLI (~5 min):
-
-```bash
-pip install \
-  --extra-index-url https://pypi.nvidia.com \
-  -U \
-  psutil \
-  "pynvml>=11.5.0" \
-  torch==2.1.2 \
-  tensorrt_llm==0.8.0 \
-  "git+https://github.com/triton-inference-server/triton_cli@0.0.6"
-```
-
-3. Download model:
-
-```bash
+# Build TRT LLM engine and generate a Triton model repository pointing at it
+triton remove -m all
 triton import -m gpt2 --backend tensorrtllm
-```
 
-4. Run server:
-
-```bash
+# Start Triton pointing at the default model repository
 triton start
 ```
 
-</details>
-
 ### Running GenAI-Perf
 
-1. Run Triton Inference Server SDK container:
+Now we can run GenAI-Perf from Triton Inference Server SDK container:
 
 ```bash
-export RELEASE="yy.mm" # e.g. export RELEASE="24.03"
+export RELEASE="yy.mm" # e.g. export RELEASE="24.06"
 
 docker run -it --net=host --rm --gpus=all nvcr.io/nvidia/tritonserver:${RELEASE}-py3-sdk
-```
 
-2. Run GenAI-Perf:
-
-```bash
-genai-perf \
+# Run GenAI-Perf in the container:
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -184,32 +186,38 @@ genai-perf \
 Example output:
 
 ```
-                                                  LLM Metrics
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┳━━━━━━━━━━━━━┓
-┃                Statistic ┃         avg ┃         min ┃         max ┃         p99 ┃         p90 ┃         p75 ┃
-┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━╇━━━━━━━━━━━━━┩
-│ Time to first token (ns) │  13,266,974 │  11,818,732 │  18,351,779 │  16,513,479 │  13,741,986 │  13,544,376 │
-│ Inter token latency (ns) │   2,069,766 │      42,023 │  15,307,799 │   3,256,375 │   3,020,580 │   2,090,930 │
-│     Request latency (ns) │ 223,532,625 │ 219,123,330 │ 241,004,192 │ 238,198,306 │ 229,676,183 │ 224,715,918 │
-│   Output sequence length │         104 │         100 │         129 │         128 │         109 │         105 │
-│    Input sequence length │         199 │         199 │         199 │         199 │         199 │         199 │
-└──────────────────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┴─────────────┘
-Output token throughput (per sec): 460.42
-Request throughput (per sec): 4.44
+                                   LLM Metrics
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
+┃                Statistic ┃    avg ┃    min ┃    max ┃    p99 ┃    p90 ┃    p75 ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
+│ Time to first token (ms) │  11.70 │   9.88 │  17.21 │  14.35 │  12.01 │  11.87 │
+│ Inter token latency (ms) │   1.46 │   1.08 │   1.89 │   1.87 │   1.62 │   1.52 │
+│     Request latency (ms) │ 161.24 │ 153.45 │ 200.74 │ 200.66 │ 179.43 │ 162.23 │
+│   Output sequence length │ 103.39 │  95.00 │ 134.00 │ 120.08 │ 107.30 │ 105.00 │
+│    Input sequence length │ 200.01 │ 200.00 │ 201.00 │ 200.13 │ 200.00 │ 200.00 │
+└──────────────────────────┴────────┴────────┴────────┴────────┴────────┴────────┘
+Output token throughput (per sec): 635.61
+Request throughput (per sec): 6.15
 ```
 
 See [Tutorial](docs/tutorial.md) for additional examples.
 
 </br>
 
-# Visualization
+<!--
+======================
+VISUALIZATION
+======================
+-->
+
+## Visualization
 
 GenAI-Perf can also generate various plots that visualize the performance of the
 current profile run. This is disabled by default but users can easily enable it
 by passing the `--generate-plots` option when running the benchmark:
 
 ```bash
-genai-perf \
+genai-perf profile \
   -m gpt2 \
   --service-kind triton \
   --backend tensorrtllm \
@@ -226,12 +234,12 @@ This will generate a [set of default plots](docs/compare.md#example-plots) such 
 - Input sequence lengths vs Output sequence lengths
 
 
-## Using `compare` Subcommand to Visualize Multiple Runs
+### Using `compare` Subcommand to Visualize Multiple Runs
 
 The `compare` subcommand in GenAI-Perf facilitates users in comparing multiple
 profile runs and visualizing the differences through plots.
 
-### Usage
+#### Usage
 Assuming the user possesses two profile export JSON files,
 namely `profile1.json` and `profile2.json`,
 they can execute the `compare` subcommand using the `--files` option:
@@ -258,7 +266,7 @@ compare
 └── ...
 ```
 
-### Customization
+#### Customization
 Users have the flexibility to iteratively modify the generated YAML configuration
 file to suit their specific requirements.
 They can make alterations to the plots according to their preferences and execute
@@ -277,7 +285,13 @@ See [Compare documentation](docs/compare.md) for more details.
 
 </br>
 
-# Model Inputs
+<!--
+======================
+MODEL INPUTS
+======================
+-->
+
+## Model Inputs
 
 GenAI-Perf supports model input prompts from either synthetically generated
 inputs, or from the HuggingFace
@@ -301,8 +315,8 @@ options:
 
 When the dataset is coming from a file, you can specify the following
 options:
-* `--input-file <path>`: The input file containing the single prompt to
-  use for benchmarking.
+* `--input-file <path>`: The input file containing the prompts to
+  use for benchmarking as JSON objects.
 
 For any dataset, you can specify the following options:
 * `--output-tokens-mean <int>`: The mean number of tokens in each output. Ensure
@@ -323,7 +337,13 @@ You can optionally set additional model inputs with the following option:
 
 </br>
 
-# Metrics
+<!--
+======================
+METRICS
+======================
+-->
+
+## Metrics
 
 GenAI-Perf collects a diverse set of metrics that captures the performance of
 the inference server.
@@ -340,14 +360,20 @@ the inference server.
 
 </br>
 
-# Command Line Options
+<!--
+======================
+COMMAND LINE OPTIONS
+======================
+-->
+
+## Command Line Options
 
 ##### `-h`
 ##### `--help`
 
 Show the help message and exit.
 
-## Endpoint Options:
+### Endpoint Options:
 
 ##### `-m <list>`
 ##### `--model <list>`
@@ -373,7 +399,7 @@ model config to not echo the input tokens in the output. (default: tensorrtllm)
 
 Set a custom endpoint that differs from the OpenAI defaults. (default: `None`)
 
-##### `--endpoint-type {chat,completions,embeddings}`
+##### `--endpoint-type {chat,completions,embeddings,rankings}`
 
 The endpoint-type to send requests to on the server. This is only used with the
 `openai` service-kind. (default: `None`)
@@ -392,7 +418,7 @@ An option to enable the use of the streaming API. (default: `False`)
 
 URL of the endpoint to target for benchmarking. (default: `None`)
 
-## Input Options
+### Input Options
 
 ##### `-b <int>`
 ##### `--batch-size <int>`
@@ -400,7 +426,8 @@ URL of the endpoint to target for benchmarking. (default: `None`)
 The batch size of the requests GenAI-Perf should send.
 This is currently only supported with the
 [embeddings endpoint type](docs/embeddings.md).
-(default: `1`)
+(default: `1`) and
+[rankings endpoint type](docs/rankings.md).
 
 ##### `--extra-inputs <str>`
 
@@ -457,7 +484,7 @@ data. (default: `550`)
 The standard deviation of number of tokens in the generated prompts when
 using synthetic data. (default: `0`)
 
-## Profiling Options
+### Profiling Options
 
 ##### `--concurrency <int>`
 
@@ -482,7 +509,7 @@ stable. The measurement is considered as stable if the ratio of max / min from
 the recent 3 measurements is within (stability percentage) in terms of both
 infer per second and latency. (default: `999`)
 
-## Output Options
+### Output Options
 
 ##### `--artifact-dir`
 
@@ -501,7 +528,7 @@ exported to `<profile_export_file>_genai_perf.csv`. For example, if the profile
 export file is `profile_export.json`, the genai-perf file will be exported to
 `profile_export_genai_perf.csv`. (default: `profile_export.json`)
 
-## Other Options
+### Other Options
 
 ##### `--tokenizer <str>`
 
@@ -517,7 +544,15 @@ An option to enable verbose mode. (default: `False`)
 
 An option to print the version and exit.
 
-# Known Issues
+</br>
+
+<!--
+======================
+Known Issues
+======================
+-->
+
+## Known Issues
 
 * GenAI-Perf can be slow to finish if a high request-rate is provided
 * Token counts may not be exact

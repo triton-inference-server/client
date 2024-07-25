@@ -46,6 +46,7 @@ from genai_perf.llm_inputs.llm_inputs import (
     OutputFormat,
     PromptSource,
 )
+from genai_perf.llm_inputs.synthetic_image_generator import ImageFormat
 from genai_perf.plots.plot_config_parser import PlotConfigParser
 from genai_perf.plots.plot_manager import PlotManager
 from genai_perf.tokenizer import DEFAULT_TOKENIZER
@@ -61,6 +62,14 @@ class PathType(Enum):
         return self.name.lower()
 
 
+class Subcommand(Enum):
+    PROFILE = auto()
+    COMPARE = auto()
+
+    def to_lowercase(self):
+        return self.name.lower()
+
+
 logger = logging.getLogger(__name__)
 
 _endpoint_type_map = {
@@ -68,6 +77,7 @@ _endpoint_type_map = {
     "completions": "v1/completions",
     "embeddings": "v1/embeddings",
     "rankings": "v1/ranking",
+    "vision": "v1/chat/completions",
 }
 
 
@@ -77,7 +87,7 @@ def _check_model_args(
     """
     Check if model name is provided.
     """
-    if not args.subcommand and not args.model:
+    if not args.model:
         parser.error("The -m/--model option is required and cannot be empty.")
     args = _convert_str_to_enum_entry(
         args, "model_selection_strategy", ModelSelectionStrategy
@@ -102,9 +112,27 @@ def _check_compare_args(
     """
     Check compare subcommand args
     """
-    if args.subcommand == "compare":
-        if not args.config and not args.files:
-            parser.error("Either the --config or --files option must be specified.")
+    if not args.config and not args.files:
+        parser.error("Either the --config or --files option must be specified.")
+    return args
+
+
+def _check_image_input_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Sanity check the image input args
+    """
+    if args.image_width_mean <= 0 or args.image_height_mean <= 0:
+        parser.error(
+            "Both --image-width-mean and --image-height-mean values must be positive."
+        )
+    if args.image_width_stddev < 0 or args.image_height_stddev < 0:
+        parser.error(
+            "Both --image-width-stddev and --image-height-stddev values must be non-negative."
+        )
+
+    args = _convert_str_to_enum_entry(args, "image_format", ImageFormat)
     return args
 
 
@@ -130,6 +158,11 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
             elif args.endpoint_type == "rankings":
                 args.output_format = OutputFormat.RANKINGS
+
+            # (TMA-1986) deduce vision format from chat completions + image CLI
+            # because there's no openai vision endpoint.
+            elif args.endpoint_type == "vision":
+                args.output_format = OutputFormat.OPENAI_VISION
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -177,6 +210,11 @@ def _check_conditional_args_embeddings_rankings(
         if args.streaming:
             parser.error(
                 f"The --streaming option is not supported with the {args.endpoint_type} endpoint type."
+            )
+
+        if args.generate_plots:
+            parser.error(
+                f"The --generate-plots option is not currently supported with the {args.endpoint_type} endpoint type."
             )
     else:
         if args.batch_size != LlmInputs.DEFAULT_BATCH_SIZE:
@@ -399,6 +437,51 @@ def _add_input_args(parser):
     )
 
 
+def _add_image_input_args(parser):
+    input_group = parser.add_argument_group("Image Input")
+
+    input_group.add_argument(
+        "--image-width-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_WIDTH_MEAN,
+        required=False,
+        help=f"The mean width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-width-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_WIDTH_STDDEV,
+        required=False,
+        help=f"The standard deviation of width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-mean",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_HEIGHT_MEAN,
+        required=False,
+        help=f"The mean height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-stddev",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGE_HEIGHT_STDDEV,
+        required=False,
+        help=f"The standard deviation of height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-format",
+        type=str,
+        choices=utils.get_enum_names(ImageFormat),
+        required=False,
+        help=f"The compression format of the images. "
+        "If format is not selected, format of generated image is selected at random",
+    )
+
+
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
     load_management_group = profile_group.add_mutually_exclusive_group(required=False)
@@ -487,7 +570,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings", "rankings"],
+        choices=["chat", "completions", "embeddings", "rankings", "vision"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',
@@ -568,20 +651,13 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
-    other_group.add_argument(
-        "--version",
-        action="version",
-        version="%(prog)s " + __version__,
-        help=f"An option to print the version and exit.",
-    )
-
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
     if args.extra_inputs:
         for input_str in args.extra_inputs:
             if input_str.startswith("{") and input_str.endswith("}"):
-                request_inputs.update(json.loads(input_str))
+                request_inputs.update(utils.load_json_str(input_str))
             else:
                 semicolon_count = input_str.count(":")
                 if semicolon_count != 1:
@@ -621,10 +697,10 @@ def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
 
 def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     compare = subparsers.add_parser(
-        "compare",
+        Subcommand.COMPARE.to_lowercase(),
         description="Subcommand to generate plots that compare multiple profile runs.",
     )
-    compare_group = compare.add_argument_group("Compare")
+    compare_group = compare.add_argument_group("Input")
     mx_group = compare_group.add_mutually_exclusive_group(required=False)
     mx_group.add_argument(
         "--config",
@@ -646,18 +722,27 @@ def _parse_compare_args(subparsers) -> argparse.ArgumentParser:
     return compare
 
 
+def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
+    profile = subparsers.add_parser(
+        Subcommand.PROFILE.to_lowercase(),
+        description="Subcommand to profile LLMs and Generative AI models.",
+    )
+    _add_endpoint_args(profile)
+    _add_input_args(profile)
+    _add_image_input_args(profile)
+    _add_profile_args(profile)
+    _add_output_args(profile)
+    _add_other_args(profile)
+    profile.set_defaults(func=profile_handler)
+    return profile
+
+
 ### Handlers ###
 
 
 def create_compare_dir() -> None:
     if not os.path.exists(DEFAULT_COMPARE_DIR):
         os.mkdir(DEFAULT_COMPARE_DIR)
-
-
-def profile_handler(args, extra_args):
-    from genai_perf.wrapper import Profiler
-
-    Profiler.run(args=args, extra_args=extra_args)
 
 
 def compare_handler(args: argparse.Namespace):
@@ -674,45 +759,76 @@ def compare_handler(args: argparse.Namespace):
     plot_manager.generate_plots()
 
 
-### Entrypoint ###
+def profile_handler(args, extra_args):
+    from genai_perf.wrapper import Profiler
+
+    Profiler.run(args=args, extra_args=extra_args)
 
 
-def parse_args():
-    argv = sys.argv
+### Parser Initialization ###
 
+
+def init_parsers():
     parser = argparse.ArgumentParser(
         prog="genai-perf",
         description="CLI to profile LLMs and Generative AI models with Perf Analyzer",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    parser.set_defaults(func=profile_handler)
-
-    # Conceptually group args for easier visualization
-    _add_endpoint_args(parser)
-    _add_input_args(parser)
-    _add_profile_args(parser)
-    _add_output_args(parser)
-    _add_other_args(parser)
+    parser.add_argument(
+        "--version",
+        action="version",
+        version="%(prog)s " + __version__,
+        help=f"An option to print the version and exit.",
+    )
 
     # Add subcommands
     subparsers = parser.add_subparsers(
         help="List of subparser commands.", dest="subcommand"
     )
-    compare_parser = _parse_compare_args(subparsers)
+    _ = _parse_compare_args(subparsers)
+    _ = _parse_profile_args(subparsers)
+    subparsers.required = True
 
-    # Check for passthrough args
+    return parser
+
+
+def get_passthrough_args_index(argv: list) -> int:
     if "--" in argv:
         passthrough_index = argv.index("--")
         logger.info(f"Detected passthrough args: {argv[passthrough_index + 1:]}")
     else:
         passthrough_index = len(argv)
 
+    return passthrough_index
+
+
+def refine_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    if args.subcommand == Subcommand.PROFILE.to_lowercase():
+        args = _infer_prompt_source(args)
+        args = _check_model_args(parser, args)
+        args = _check_conditional_args(parser, args)
+        args = _check_image_input_args(parser, args)
+        args = _check_load_manager_args(args)
+        args = _set_artifact_paths(args)
+    elif args.subcommand == Subcommand.COMPARE.to_lowercase():
+        args = _check_compare_args(parser, args)
+    else:
+        raise ValueError(f"Unknown subcommand: {args.subcommand}")
+
+    return args
+
+
+### Entrypoint ###
+
+
+def parse_args():
+    argv = sys.argv
+
+    parser = init_parsers()
+    passthrough_index = get_passthrough_args_index(argv)
     args = parser.parse_args(argv[1:passthrough_index])
-    args = _infer_prompt_source(args)
-    args = _check_model_args(parser, args)
-    args = _check_conditional_args(parser, args)
-    args = _check_compare_args(compare_parser, args)
-    args = _check_load_manager_args(args)
-    args = _set_artifact_paths(args)
+    args = refine_args(parser, args)
 
     return args, argv[passthrough_index + 1 :]
