@@ -217,6 +217,7 @@ class LlmInputs:
 
         json_in_pa_format = cls._convert_generic_json_to_output_format(
             output_format,
+            tokenizer,
             generic_dataset_json,
             add_model_name,
             add_stream,
@@ -689,6 +690,7 @@ class LlmInputs:
     def _convert_generic_json_to_output_format(
         cls,
         output_format: OutputFormat,
+        tokenizer: Tokenizer,
         generic_dataset: Dict,
         add_model_name: bool,
         add_stream: bool,
@@ -763,6 +765,16 @@ class LlmInputs:
                 output_tokens_deterministic,
                 model_name,
                 model_selection_strategy,
+            )
+        elif output_format == OutputFormat.TENSORRTLLM_ENGINE:
+            output_json = cls._convert_generic_json_to_trtllm_engine_format(
+                generic_dataset,
+                tokenizer,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
             )
         else:
             raise GenAIPerfException(
@@ -1009,6 +1021,28 @@ class LlmInputs:
             model_selection_strategy,
         )
 
+        return pa_json
+
+    @classmethod
+    def _convert_generic_json_to_trtllm_engine_format(
+        cls,
+        dataset_json: Dict,
+        tokenizer: Tokenizer,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+    ) -> Dict:
+        pa_json = cls._populate_trtllm_engine_output_json(
+            dataset_json,
+            tokenizer,
+            add_stream,
+            extra_inputs,
+            output_tokens_mean,
+            output_tokens_stddev,
+            output_tokens_deterministic,
+        )
         return pa_json
 
     @classmethod
@@ -1263,6 +1297,43 @@ class LlmInputs:
         return pa_json
 
     @classmethod
+    def _populate_trtllm_engine_output_json(
+        cls,
+        dataset_json: Dict,
+        tokenizer: Tokenizer,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+    ) -> Dict:
+        pa_json = cls._create_empty_trtllm_pa_json()
+
+        for index, entry in enumerate(dataset_json["rows"]):
+            token_ids = tokenizer.encode(entry["text_input"])
+            pa_json["data"].append(
+                {
+                    "input_ids": {
+                        "content": token_ids,
+                        "shape": [len(token_ids)],
+                    },
+                    "input_lengths": [len(token_ids)],
+                    "request_output_len": [cls.DEFAULT_TENSORRTLLM_MAX_TOKENS],
+                }
+            )
+
+            pa_json = cls._add_optional_tags_to_trtllm_engine_json(
+                pa_json,
+                index,
+                add_stream,
+                extra_inputs,
+                output_tokens_mean,
+                output_tokens_stddev,
+                output_tokens_deterministic,
+            )
+        return pa_json
+
+    @classmethod
     def _create_empty_openai_pa_json(cls) -> Dict:
         empty_pa_json = deepcopy(cls.EMPTY_JSON_IN_OPENAI_PA_FORMAT)
 
@@ -1473,6 +1544,31 @@ class LlmInputs:
             if output_tokens_deterministic:
                 row["min_length"] = [number_of_tokens]
             row["max_tokens"] = [number_of_tokens]
+        for key, value in extra_inputs.items():
+            row[key] = [value]
+
+        return pa_json
+
+    @classmethod
+    def _add_optional_tags_to_trtllm_engine_json(
+        cls,
+        pa_json: Dict,
+        index: int,
+        add_stream: bool,
+        extra_inputs: Dict,
+        output_tokens_mean: int,
+        output_tokens_stddev: int,
+        output_tokens_deterministic: bool,
+    ) -> Dict:
+        row = pa_json["data"][index]
+        if add_stream:
+            row["streaming"] = [True]
+        if output_tokens_mean != cls.DEFAULT_OUTPUT_TOKENS_MEAN:
+            num_tokens = int(random.gauss(output_tokens_mean, output_tokens_stddev))
+            row["request_output_len"] = [num_tokens]
+            if output_tokens_deterministic:
+                row["min_length"] = [num_tokens]
+
         for key, value in extra_inputs.items():
             row[key] = [value]
 

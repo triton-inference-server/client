@@ -191,10 +191,11 @@ def _check_conditional_args(
                 "The --output-tokens-mean option is required when using --output-tokens-mean-deterministic."
             )
 
-    if args.service_kind != "triton":
+    if args.service_kind not in ["triton", "tensorrtllm_engine"]:
         if args.output_tokens_mean_deterministic:
             parser.error(
-                "The --output-tokens-mean-deterministic option is only supported with the Triton service-kind."
+                "The --output-tokens-mean-deterministic option is only supported "
+                "with the Triton and TensorRT-LLM Engine service-kind."
             )
 
     _check_conditional_args_embeddings_rankings(parser, args)

@@ -554,6 +554,107 @@ class TestLlmInputs:
     #     else:
     #         assert False, f"Unsupported output format: {output_format}"
 
+    @pytest.mark.parametrize(
+        "generic_json, add_stream, output_tokens_mean, output_tokens_deterministic, expected_json",
+        [
+            (
+                # generic_json
+                {
+                    "rows": [
+                        {"text_input": "test input one"},
+                        {"text_input": "test input two"},
+                    ]
+                },
+                False,
+                -1,
+                False,
+                # expected_json
+                {
+                    "data": [
+                        {
+                            "input_ids": {
+                                "content": [1243, 1881, 697],
+                                "shape": [3],
+                            },
+                            "input_lengths": [3],
+                            "request_output_len": [
+                                LlmInputs.DEFAULT_TENSORRTLLM_MAX_TOKENS
+                            ],
+                        },
+                        {
+                            "input_ids": {
+                                "content": [1243, 1881, 1023],
+                                "shape": [3],
+                            },
+                            "input_lengths": [3],
+                            "request_output_len": [
+                                LlmInputs.DEFAULT_TENSORRTLLM_MAX_TOKENS
+                            ],
+                        },
+                    ],
+                },
+            ),
+            (
+                # generic_json
+                {
+                    "rows": [
+                        {"text_input": "test input one"},
+                        {"text_input": "test input two"},
+                    ]
+                },
+                True,
+                999,
+                True,
+                # expected_json
+                {
+                    "data": [
+                        {
+                            "input_ids": {
+                                "content": [1243, 1881, 697],
+                                "shape": [3],
+                            },
+                            "input_lengths": [3],
+                            "request_output_len": [999],
+                            "min_length": [999],
+                            "streaming": [True],
+                        },
+                        {
+                            "input_ids": {
+                                "content": [1243, 1881, 1023],
+                                "shape": [3],
+                            },
+                            "input_lengths": [3],
+                            "request_output_len": [999],
+                            "min_length": [999],
+                            "streaming": [True],
+                        },
+                    ],
+                },
+            ),
+        ],
+    )
+    def test_generic_json_to_trtllm_engine_format(
+        self,
+        generic_json,
+        add_stream,
+        output_tokens_mean,
+        output_tokens_deterministic,
+        expected_json,
+    ) -> None:
+        trtllm_json = LlmInputs._convert_generic_json_to_output_format(
+            output_format=OutputFormat.TENSORRTLLM_ENGINE,
+            tokenizer=get_tokenizer(DEFAULT_TOKENIZER),
+            generic_dataset=generic_json,
+            add_model_name=False,
+            add_stream=add_stream,
+            extra_inputs={},
+            output_tokens_mean=output_tokens_mean,
+            output_tokens_stddev=0,
+            output_tokens_deterministic=output_tokens_deterministic,
+        )
+
+        assert trtllm_json == expected_json
+
     def test_add_image_inputs_openai_vision(self) -> None:
         generic_json = {
             "rows": [
@@ -606,6 +707,7 @@ class TestLlmInputs:
             OutputFormat.OPENAI_VISION,
             OutputFormat.VLLM,
             OutputFormat.TENSORRTLLM,
+            OutputFormat.TENSORRTLLM_ENGINE,
         ],
     )
     def test_get_input_dataset_from_synthetic(
