@@ -56,7 +56,7 @@ constexpr uint64_t NANOS_PER_MILLIS = 1000000;
 
 // Will use the characters specified here to construct random strings
 std::string const character_set =
-    "abcdefghijklmnaoqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 .?!";
+    "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890 .?!";
 
 // A boolean flag to mark an interrupt and commencement of early exit
 extern volatile bool early_exit;
