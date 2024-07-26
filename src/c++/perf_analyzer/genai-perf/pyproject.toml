@@ -59,6 +59,7 @@ dependencies = [
   "pytest-mock",
   "pyyaml",
   "responses",
+  "pillow",
 ]
 
 # CLI Entrypoint
@@ -66,8 +67,8 @@ dependencies = [
 genai-perf = "genai_perf.main:main"
 
 [project.urls]
-"Homepage" = "https://github.com/triton-inference-server/"
-"Bug Tracker" = "https://github.com/triton-inference-server/server/issues"
+"Homepage" = "https://github.com/triton-inference-server/client"
+"Bug Tracker" = "https://github.com/triton-inference-server/client/issues"
 
 # Build
 [build-system]
