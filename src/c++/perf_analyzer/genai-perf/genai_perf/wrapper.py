@@ -122,6 +122,13 @@ class Profiler:
                     cmd += [f"-{arg}"]
                 else:
                     cmd += [f"--{arg}"]
+
+            # (TPA-237) GAP needs to call PA using triton_c_api service kind.
+            # Currently, it just calls using triton service kind to verify that
+            # it runs.
+            elif arg == "service_kind" and value == "tensorrtllm_engine":
+                cmd += ["--service-kind", "triton"]
+                args.service_kind = "triton"
             else:
                 if len(arg) == 1:
                     cmd += [f"-{arg}", f"{value}"]
