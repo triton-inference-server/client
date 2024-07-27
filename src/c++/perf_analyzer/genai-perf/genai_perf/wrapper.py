@@ -64,6 +64,7 @@ class Profiler:
         skip_args = [
             "artifact_dir",
             "backend",
+            "batch_size",
             "concurrency",
             "endpoint_type",
             "extra_inputs",
@@ -92,6 +93,11 @@ class Profiler:
             "synthetic_input_tokens_stddev",
             "subcommand",
             "tokenizer",
+            "image_width_mean",
+            "image_width_stddev",
+            "image_height_mean",
+            "image_height_stddev",
+            "image_format",
         ]
 
         utils.remove_file(args.profile_export_file)

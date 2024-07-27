@@ -81,16 +81,17 @@ class TestInferenceProfiler : public InferenceProfiler {
     ip.load_parameters_.stability_threshold = lp.stability_threshold;
     ip.load_parameters_.stability_window = lp.stability_window;
 
-    return ip.CheckWindowForStability(idx, ls);
+    return ip.CheckWindowForStability(idx, ls, true);
   };
 
-  static bool TestDetermineStability(LoadStatus& ls, LoadParams& lp)
+  static bool TestDetermineStability(
+      LoadStatus& ls, LoadParams& lp, bool check_latency = true)
   {
     InferenceProfiler ip;
     ip.load_parameters_.stability_threshold = lp.stability_threshold;
     ip.load_parameters_.stability_window = lp.stability_window;
 
-    return ip.DetermineStability(ls);
+    return ip.DetermineStability(ls, check_latency);
   }
 
   static bool TestIsDoneProfiling(
@@ -105,6 +106,11 @@ class TestInferenceProfiler : public InferenceProfiler {
     bool is_stable = ip.DetermineStability(ls);
     return ip.IsDoneProfiling(ls, &is_stable);
   };
+
+  std::pair<uint64_t, uint64_t> ClampWindow(std::vector<RequestRecord>& reqs)
+  {
+    return InferenceProfiler::ClampWindow(reqs);
+  }
 
   cb::Error MergeMetrics(
       const std::vector<std::reference_wrapper<const Metrics>>& all_metrics,
@@ -348,6 +354,16 @@ TEST_CASE("test_determine_stability")
 
     ls.infer_per_sec = {500.0, 520.0, 510.0};
     CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp) == true);
+  }
+
+  SUBCASE("test determine stability without latency check")
+  {
+    ls.infer_per_sec = {500.0, 520.0, 510.0};
+    ls.latencies = {100, 106, 112};
+    lp.stability_window = 3;
+    lp.stability_threshold = 0.1;
+    uint64_t latency_threshold_ms = 1;
+    CHECK(TestInferenceProfiler::TestDetermineStability(ls, lp, false) == true);
   }
 }
 
@@ -1047,6 +1063,41 @@ TEST_CASE(
     CHECK(
         summary_status.client_stats.responses_per_sec == doctest::Approx(3.0));
   }
+}
+
+TEST_CASE("clamp window")
+{
+  TestInferenceProfiler tip{};
+  std::vector<RequestRecord> reqs{};
+
+  auto clock_epoch{std::chrono::time_point<std::chrono::system_clock>()};
+
+  auto request1_timestamp{clock_epoch + std::chrono::nanoseconds(5)};
+  auto response1_timestamp{clock_epoch + std::chrono::nanoseconds(20)};
+
+  reqs.emplace_back(
+      request1_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response1_timestamp});
+
+  auto request2_timestamp{clock_epoch + std::chrono::nanoseconds(3)};
+  auto response2_timestamp{clock_epoch + std::chrono::nanoseconds(15)};
+  reqs.emplace_back(
+      request2_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response2_timestamp});
+
+  auto request3_timestamp{clock_epoch + std::chrono::nanoseconds(7)};
+  auto response3_timestamp{clock_epoch + std::chrono::nanoseconds(17)};
+  reqs.emplace_back(
+      request3_timestamp,
+      std::vector<std::chrono::time_point<std::chrono::system_clock>>{
+          response3_timestamp});
+
+  auto window = tip.ClampWindow(reqs);
+
+  CHECK(window.first == 3);
+  CHECK(window.second == 20);
 }
 
 TEST_CASE("summarize_client_stat: testing the SummarizeClientStat function")

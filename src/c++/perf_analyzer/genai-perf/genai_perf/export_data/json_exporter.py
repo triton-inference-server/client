@@ -26,12 +26,15 @@
 
 
 import json
-from argparse import Namespace
 from enum import Enum
-from pathlib import Path
 from typing import Dict
 
-from genai_perf.constants import DEFAULT_OUTPUT_DATA_JSON
+import genai_perf.logging as logging
+from genai_perf.export_data.exporter_config import ExporterConfig
+
+DEFAULT_OUTPUT_DATA_JSON = "profile_export_genai_perf.json"
+
+logger = logging.getLogger(__name__)
 
 
 class JsonExporter:
@@ -39,22 +42,25 @@ class JsonExporter:
     A class to export the statistics and arg values in a json format.
     """
 
-    def __init__(self, stats: Dict, args: Namespace, extra_inputs: Dict):
-        self._stats = stats
-        self._args = dict(vars(args))
-        self._extra_inputs = extra_inputs
+    def __init__(self, config: ExporterConfig):
+        self._stats: Dict = config.stats
+        self._args = dict(vars(config.args))
+        self._extra_inputs = config.extra_inputs
+        self._output_dir = config.artifact_dir
         self._stats_and_args: Dict = {}
         self._prepare_args_for_export()
         self._merge_stats_and_args()
 
-    def export_to_file(self, output_dir: Path) -> None:
-        filename = output_dir / DEFAULT_OUTPUT_DATA_JSON
+    def export(self) -> None:
+        filename = self._output_dir / DEFAULT_OUTPUT_DATA_JSON
+        logger.info(f"Generating {filename}")
         with open(str(filename), "w") as f:
             f.write(json.dumps(self._stats_and_args, indent=2))
 
     def _prepare_args_for_export(self) -> None:
-        del self._args["func"]
-        del self._args["output_format"]
+        self._args.pop("func", None)
+        self._args.pop("output_format", None)
+        self._args.pop("input_file", None)
         self._args["profile_export_file"] = str(self._args["profile_export_file"])
         self._args["artifact_dir"] = str(self._args["artifact_dir"])
         for k, v in self._args.items():
