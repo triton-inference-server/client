@@ -640,6 +640,7 @@ class LlmInputs:
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for prompt, image in zip(prompts, images):
+            # (TMA-2004) support variable images per request through input file
             content: Dict[str, Any] = {"text_input": prompt}
             content.update({"images": [image]} if image else {})
             dataset_json["rows"].append({"row": content})
