@@ -27,7 +27,7 @@
 import os
 from io import StringIO
 from pathlib import Path
-from typing import Any, List
+from typing import Any, List, Tuple
 
 import pytest
 from genai_perf import parser
@@ -38,14 +38,12 @@ from genai_perf.metrics import LLMMetrics, Metrics, Statistics
 
 class TestCsvExporter:
     @pytest.fixture
-    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[tuple[str, str]]:
+    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[Tuple[str, str]]:
         """
         This function will mock the open function for specific files.
         """
 
         written_data = []
-
-        original_open = open
 
         def custom_open(filename, *args, **kwargs):
             def write(self: Any, content: str) -> int:
