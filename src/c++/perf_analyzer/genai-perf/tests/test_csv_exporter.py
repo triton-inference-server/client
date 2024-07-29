@@ -24,6 +24,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+import os
 from io import StringIO
 from pathlib import Path
 from typing import Any, List
@@ -37,7 +38,7 @@ from genai_perf.metrics import LLMMetrics, Metrics, Statistics
 
 class TestCsvExporter:
     @pytest.fixture
-    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[str]:
+    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[tuple[str, str]]:
         """
         This function will mock the open function for specific files.
         """
@@ -48,15 +49,13 @@ class TestCsvExporter:
 
         def custom_open(filename, *args, **kwargs):
             def write(self: Any, content: str) -> int:
-                written_data.append(content)
+                print(f"Writing to {filename}")  # To help with debugging failures
+                written_data.append((str(filename), content))
                 return len(content)
 
-            if str(filename) == "profile_export_genai_perf.csv":
-                tmp_file = StringIO()
-                tmp_file.write = write.__get__(tmp_file)
-                return tmp_file
-            else:
-                return original_open(filename, *args, **kwargs)
+            tmp_file = StringIO()
+            tmp_file.write = write.__get__(tmp_file)
+            return tmp_file
 
         monkeypatch.setattr("builtins.open", custom_open)
 
@@ -115,7 +114,16 @@ class TestCsvExporter:
             "Output Token Throughput (per sec),456.00\r\n",
             "Request Throughput (per sec),123.00\r\n",
         ]
-        returned_data = mock_read_write
+        expected_filename = "profile_export_genai_perf.csv"
+        returned_data = [
+            data
+            for filename, data in mock_read_write
+            if os.path.basename(filename) == expected_filename
+        ]
+        if returned_data == []:
+            raise Exception(
+                f"Expected file {expected_filename} not found in written data."
+            )
         assert returned_data == expected_content
 
     def test_nonstreaming_llm_csv_output(
@@ -125,6 +133,9 @@ class TestCsvExporter:
         Collect LLM metrics from profile export data and confirm correct values are
         printed in csv.
         """
+        artifacts_dir = "artifacts/model_name-openai-chat-concurrency1"
+        custom_filename = "custom_export.json"
+        expected_filename = f"{artifacts_dir}/custom_export_genai_perf.csv"
         argv = [
             "genai-perf",
             "profile",
@@ -134,6 +145,8 @@ class TestCsvExporter:
             "openai",
             "--endpoint-type",
             "chat",
+            "--profile-export-file",
+            custom_filename,
         ]
         monkeypatch.setattr("sys.argv", argv)
         args, _ = parser.parse_args()
@@ -168,7 +181,13 @@ class TestCsvExporter:
             "Output Token Throughput (per sec),456.00\r\n",
             "Request Throughput (per sec),123.00\r\n",
         ]
-        returned_data = mock_read_write
+        returned_data = [
+            data for filename, data in mock_read_write if filename == expected_filename
+        ]
+        if returned_data == []:
+            raise Exception(
+                f"Expected file {expected_filename} not found in written data."
+            )
         assert returned_data == expected_content
 
     def test_embedding_csv_output(
@@ -209,5 +228,5 @@ class TestCsvExporter:
             "Metric,Value\r\n",
             "Request Throughput (per sec),123.00\r\n",
         ]
-        returned_data = mock_read_write
+        returned_data = [data for _, data in mock_read_write]
         assert returned_data == expected_content

@@ -30,8 +30,6 @@ import csv
 import genai_perf.logging as logging
 from genai_perf.export_data.exporter_config import ExporterConfig
 
-DEFAULT_OUTPUT_DATA_CSV = "profile_export_genai_perf.csv"
-
 logger = logging.getLogger(__name__)
 
 
@@ -65,14 +63,17 @@ class CsvExporter:
         self._args = config.args
 
     def export(self) -> None:
-        csv_filename = self._output_dir / DEFAULT_OUTPUT_DATA_CSV
-        logger.info(f"Generating {csv_filename}")
+        filename = str(self._args.profile_export_file)
+        if filename.endswith(".json"):
+            filename = filename[:-5]
+        filename += "_genai_perf.csv"
+        logger.info(f"Generating {filename}")
 
-        with open(csv_filename, mode="w", newline="") as csvfile:
-            csv_writer = csv.writer(csvfile)
-            self._write_request_metrics(csv_writer)
-            csv_writer.writerow([])
-            self._write_system_metrics(csv_writer)
+        with open(filename, mode="w", newline="") as f:
+            writer = csv.writer(f)
+            self._write_request_metrics(writer)
+            writer.writerow([])
+            self._write_system_metrics(writer)
 
     def _write_request_metrics(self, csv_writer) -> None:
         csv_writer.writerow(self.REQUEST_METRICS_HEADER)

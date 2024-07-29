@@ -626,8 +626,9 @@ def _add_output_args(parser):
         default=Path("profile_export.json"),
         help="The path where the perf_analyzer profile export will be "
         "generated. By default, the profile export will be to profile_export.json. "
-        "The genai-perf file will be exported to <profile_export_file>_genai_perf.csv. "
-        "For example, if the profile export file is profile_export.json, the genai-perf file will be "
+        "The genai-perf files will be exported to <profile_export_file>_genai_perf.json and "
+        "<profile_export_file>_genai_perf.csv. "
+        "For example, if the profile export file is profile_export.json, the genai-perf CSV file will be "
         "exported to profile_export_genai_perf.csv.",
     )
 

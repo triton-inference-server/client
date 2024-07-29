@@ -32,8 +32,6 @@ from typing import Dict
 import genai_perf.logging as logging
 from genai_perf.export_data.exporter_config import ExporterConfig
 
-DEFAULT_OUTPUT_DATA_JSON = "profile_export_genai_perf.json"
-
 logger = logging.getLogger(__name__)
 
 
@@ -52,7 +50,10 @@ class JsonExporter:
         self._merge_stats_and_args()
 
     def export(self) -> None:
-        filename = self._output_dir / DEFAULT_OUTPUT_DATA_JSON
+        filename = str(self._args["profile_export_file"])
+        if filename.endswith(".json"):
+            filename = filename[:-5]
+        filename += "_genai_perf.json"
         logger.info(f"Generating {filename}")
         with open(str(filename), "w") as f:
             f.write(json.dumps(self._stats_and_args, indent=2))

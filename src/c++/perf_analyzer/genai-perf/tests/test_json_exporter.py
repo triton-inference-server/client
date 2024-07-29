@@ -25,14 +25,44 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import json
+import os
+from io import StringIO
+from typing import Any, List
 
 import genai_perf.parser as parser
+import pytest
 from genai_perf.export_data.exporter_config import ExporterConfig
 from genai_perf.export_data.json_exporter import JsonExporter
 
 
 class TestJsonExporter:
-    def test_generate_json(self, monkeypatch) -> None:
+    @pytest.fixture
+    def mock_read_write(self, monkeypatch: pytest.MonkeyPatch) -> List[tuple[str, str]]:
+        """
+        This function will mock the open function for specific files.
+        """
+
+        written_data = []
+
+        original_open = open
+
+        def custom_open(filename, *args, **kwargs):
+            def write(self: Any, content: str) -> int:
+                print(f"Writing to {filename}")
+                written_data.append((str(filename), content))
+                return len(content)
+
+            tmp_file = StringIO()
+            tmp_file.write = write.__get__(tmp_file)
+            return tmp_file
+
+        monkeypatch.setattr("builtins.open", custom_open)
+
+        return written_data
+
+    def test_generate_json(
+        self, monkeypatch, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
         cli_cmd = [
             "genai-perf",
             "profile",
@@ -55,6 +85,64 @@ class TestJsonExporter:
         config.artifact_dir = args.artifact_dir
         json_exporter = JsonExporter(config)
         assert json_exporter._stats_and_args == json.loads(self.expected_json_output)
+        json_exporter.export()
+        expected_filename = "profile_export_genai_perf.json"
+        written_data = [
+            data
+            for filename, data in mock_read_write
+            if os.path.basename(filename) == expected_filename
+        ]
+        if written_data == []:
+            raise Exception(
+                f"Expected file {expected_filename} not found in written data."
+            )
+        assert len(written_data) == 1
+        assert json.loads(written_data[0]) == json.loads(self.expected_json_output)
+
+    def test_generate_json_custom_export(
+        self, monkeypatch, mock_read_write: pytest.MonkeyPatch
+    ) -> None:
+        artifacts_dir = "artifacts/gpt2_vllm-triton-vllm-concurrency1"
+        custom_filename = "custom_export.json"
+        expected_filename = f"{artifacts_dir}/custom_export_genai_perf.json"
+        expected_profile_filename = f"{artifacts_dir}/custom_export.json"
+        cli_cmd = [
+            "genai-perf",
+            "profile",
+            "-m",
+            "gpt2_vllm",
+            "--backend",
+            "vllm",
+            "--streaming",
+            "--extra-inputs",
+            "max_tokens:256",
+            "--extra-inputs",
+            "ignore_eos:true",
+            "--profile-export-file",
+            custom_filename,
+        ]
+        monkeypatch.setattr("sys.argv", cli_cmd)
+        args, _ = parser.parse_args()
+        config = ExporterConfig()
+        config.stats = self.stats
+        config.args = args
+        config.extra_inputs = parser.get_extra_inputs_as_dict(args)
+        config.artifact_dir = args.artifact_dir
+        json_exporter = JsonExporter(config)
+        json_exporter.export()
+        written_data = [
+            data for filename, data in mock_read_write if filename == expected_filename
+        ]
+        if written_data == []:
+            raise Exception(
+                f"Expected file {expected_filename} not found in written data."
+            )
+        assert len(written_data) == 1
+        expected_json_output = json.loads(self.expected_json_output)
+        expected_json_output["input_config"][
+            "profile_export_file"
+        ] = expected_profile_filename
+        assert json.loads(written_data[0]) == expected_json_output
 
     stats = {
         "request_throughput": {"unit": "requests/sec", "avg": "7"},
