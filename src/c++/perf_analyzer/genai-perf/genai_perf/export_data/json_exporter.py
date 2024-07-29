@@ -26,6 +26,7 @@
 
 
 import json
+import os
 from enum import Enum
 from typing import Dict
 
@@ -50,10 +51,10 @@ class JsonExporter:
         self._merge_stats_and_args()
 
     def export(self) -> None:
-        filename = str(self._args["profile_export_file"])
-        if filename.endswith(".json"):
-            filename = filename[:-5]
-        filename += "_genai_perf.json"
+        prefix = os.path.splitext(os.path.basename(self._args["profile_export_file"]))[
+            0
+        ]
+        filename = self._output_dir / f"{prefix}_genai_perf.json"
         logger.info(f"Generating {filename}")
         with open(str(filename), "w") as f:
             f.write(json.dumps(self._stats_and_args, indent=2))

@@ -133,7 +133,7 @@ class TestCsvExporter:
         """
         artifacts_dir = "artifacts/model_name-openai-chat-concurrency1"
         custom_filename = "custom_export.json"
-        expected_filename = f"{artifacts_dir}/custom_export_genai_perf.csv"
+        expected_filename = f"custom_export_genai_perf.csv"
         argv = [
             "genai-perf",
             "profile",

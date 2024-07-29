@@ -63,10 +63,9 @@ class CsvExporter:
         self._args = config.args
 
     def export(self) -> None:
-        filename = str(self._args.profile_export_file)
-        if filename.endswith(".json"):
-            filename = filename[:-5]
-        filename += "_genai_perf.csv"
+        filename = (
+            self._output_dir / f"{self._args.profile_export_file.stem}_genai_perf.csv"
+        )
         logger.info(f"Generating {filename}")
 
         with open(filename, mode="w", newline="") as f:
