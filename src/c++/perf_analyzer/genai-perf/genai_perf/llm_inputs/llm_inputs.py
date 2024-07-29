@@ -195,13 +195,7 @@ class LlmInputs:
         """
 
         cls._check_for_valid_args(
-            input_type,
-            dataset_name,
-            starting_index,
-            length,
-            tokenizer,
-            images_count_min,
-            images_count_max,
+            input_type, dataset_name, starting_index, length, tokenizer
         )
 
         random.seed(random_seed)
@@ -472,15 +466,12 @@ class LlmInputs:
         starting_index: int,
         length: int,
         tokenizer: Tokenizer,
-        images_count_min: int,
-        images_count_max: int,
     ) -> None:
         try:
             cls._check_for_dataset_name_if_input_type_is_url(input_type, dataset_name)
             cls._check_for_tokenzier_if_input_type_is_synthetic(input_type, tokenizer)
             cls._check_for_valid_starting_index(starting_index)
             cls._check_for_valid_length(length)
-            cls._check_for_valid_multimodal_args(images_count_min, images_count_max)
 
         except Exception as e:
             raise GenAIPerfException(e)
@@ -1567,29 +1558,6 @@ class LlmInputs:
         if length < cls.MINIMUM_LENGTH:
             raise GenAIPerfException(
                 f"starting_index: {length} must be larger than {cls.MINIMUM_LENGTH}."
-            )
-
-    @classmethod
-    def _check_for_valid_multimodal_args(
-        cls, images_count_min: int, images_count_max: int
-    ) -> None:
-        if not isinstance(images_count_min, int):
-            raise GenAIPerfException(
-                f"images_count_min: {images_count_min} must be an integer."
-            )
-
-        if images_count_min < 0:
-            raise GenAIPerfException(
-                f"images_count_min: {images_count_min} must be a positive number."
-            )
-        if not isinstance(images_count_max, int):
-            raise GenAIPerfException(
-                f"images_count_max: {images_count_max} must be an integer."
-            )
-
-        if images_count_max < images_count_min:
-            raise GenAIPerfException(
-                f"images_count_max: {images_count_max} must be greater than images_count_min {images_count_min}"
             )
 
     @classmethod
