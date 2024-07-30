@@ -44,7 +44,6 @@ from genai_perf.llm_inputs.inputs_utils import (
 )
 from genai_perf.llm_inputs.llm_inputs import LlmInputs
 from genai_perf.llm_inputs.output_format_converter import BaseConverter
-from PIL import Image
 
 mocked_openorca_data = {
     "features": [
