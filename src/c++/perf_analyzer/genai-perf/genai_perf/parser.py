@@ -651,6 +651,16 @@ def _add_other_args(parser):
         help="An option to enable verbose mode.",
     )
 
+def _add_goodput_args(parser):
+    goodput_group = parser.add_argument_group("Goodput")
+
+    goodput_group.add_argument(
+        "--goodput-constraints",
+        type=float,  
+        nargs='+',   
+        required=False,
+        help="The Goodput constraints as a list of floats."
+    )
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
     request_inputs = {}
@@ -733,6 +743,7 @@ def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
     _add_profile_args(profile)
     _add_output_args(profile)
     _add_other_args(profile)
+    _add_goodput_args(profile)
     profile.set_defaults(func=profile_handler)
     return profile
 

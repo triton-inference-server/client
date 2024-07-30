@@ -145,10 +145,9 @@ class LLMProfileDataParser(ProfileDataParser):
             chunked_inter_token_latencies.append(chunked_inter_token_latency)
 
         # request & output token throughput
-        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # nanosec
+        benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # to seconds
         request_throughputs = [len(requests) / benchmark_duration]
         output_token_throughputs = [sum(output_sequence_lengths) / benchmark_duration]
-
         return LLMMetrics(
             request_throughputs,
             request_latencies,
