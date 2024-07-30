@@ -30,6 +30,7 @@ from pathlib import Path
 import genai_perf.logging as logging
 import pytest
 from genai_perf import __version__, parser
+from genai_perf.llm_inputs.inputs_utils import ImageFormat
 from genai_perf.llm_inputs.llm_inputs import (
     ModelSelectionStrategy,
     OutputFormat,
@@ -40,7 +41,7 @@ from genai_perf.parser import PathType
 
 class TestCLIArguments:
     # ================================================
-    # GENAI-PERF COMMAND
+    # PROFILE COMMAND
     # ================================================
     expected_help_output = (
         "CLI to profile LLMs and Generative AI models with Perf Analyzer"
@@ -215,6 +216,23 @@ class TestCLIArguments:
                 ["--synthetic-input-tokens-stddev", "7"],
                 {"synthetic_input_tokens_stddev": 7},
             ),
+            (
+                ["--image-width-mean", "123"],
+                {"image_width_mean": 123},
+            ),
+            (
+                ["--image-width-stddev", "123"],
+                {"image_width_stddev": 123},
+            ),
+            (
+                ["--image-height-mean", "456"],
+                {"image_height_mean": 456},
+            ),
+            (
+                ["--image-height-stddev", "456"],
+                {"image_height_stddev": 456},
+            ),
+            (["--image-format", "png"], {"image_format": ImageFormat.PNG}),
             (["-v"], {"verbose": True}),
             (["--verbose"], {"verbose": True}),
             (["-u", "test_url"], {"u": "test_url"}),
@@ -731,6 +749,26 @@ class TestCLIArguments:
         assert excinfo.value.code != 0
         captured = capsys.readouterr()
         assert expected_output in captured.err
+
+    @pytest.mark.parametrize(
+        "args",
+        [
+            # negative numbers
+            ["--image-width-mean", "-123"],
+            ["--image-width-stddev", "-34"],
+            ["--image-height-mean", "-123"],
+            ["--image-height-stddev", "-34"],
+            # zeros
+            ["--image-width-mean", "0"],
+            ["--image-height-mean", "0"],
+        ],
+    )
+    def test_positive_image_input_args(self, monkeypatch, args):
+        combined_args = ["genai-perf", "profile", "-m", "test_model"] + args
+        monkeypatch.setattr("sys.argv", combined_args)
+
+        with pytest.raises(SystemExit) as excinfo:
+            parser.parse_args()
 
     # ================================================
     # COMPARE SUBCOMMAND
