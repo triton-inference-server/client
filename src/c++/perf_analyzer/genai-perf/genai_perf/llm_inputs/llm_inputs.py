@@ -86,6 +86,8 @@ class LlmInputs:
     DEFAULT_IMAGE_WIDTH_STDDEV = 0
     DEFAULT_IMAGE_HEIGHT_MEAN = 100
     DEFAULT_IMAGE_HEIGHT_STDDEV = 0
+    DEFAULT_IMAGES_COUNT_MIN = 0
+    DEFAULT_IMAGES_COUNT_MAX = 1
 
     EMPTY_JSON_IN_VLLM_PA_FORMAT: Dict = {"data": []}
     EMPTY_JSON_IN_TENSORRTLLM_PA_FORMAT: Dict = {"data": []}
@@ -114,6 +116,8 @@ class LlmInputs:
         image_height_mean: int = DEFAULT_IMAGE_HEIGHT_MEAN,
         image_height_stddev: int = DEFAULT_IMAGE_HEIGHT_STDDEV,
         image_format: ImageFormat = ImageFormat.PNG,
+        images_count_min: int = DEFAULT_IMAGES_COUNT_MIN,
+        images_count_max: int = DEFAULT_IMAGES_COUNT_MAX,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -166,6 +170,10 @@ class LlmInputs:
             The standard deviation of height of images when generating synthetic image data.
         image_format:
             The compression format of the images.
+        images_count_min:
+            Minimum number of synthetic images to be added to a prompt.
+        images_count_max:
+            Maximum number of synthetic images to be added to a prompt.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
 
@@ -207,6 +215,8 @@ class LlmInputs:
             image_height_mean,
             image_height_stddev,
             image_format,
+            images_count_min,
+            images_count_max,
             batch_size,
             input_filename,
         )
@@ -247,6 +257,8 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
+        images_count_min: int,
+        images_count_max: int,
         batch_size: int,
         input_filename: Optional[Path],
     ) -> Dict:
@@ -283,6 +295,10 @@ class LlmInputs:
             The standard deviation of height of images when generating synthetic image data.
         image_format:
             The compression format of the images.
+        images_count_min:
+            Minimum number of synthetic images to be added to a prompt.
+        images_count_max:
+            Maximum number of synthetic images to be added to a prompt.
         batch_size:
             The number of inputs per request (currently only used for the embeddings and rankings endpoints)
         input_filename:
@@ -350,6 +366,8 @@ class LlmInputs:
                     image_height_mean,
                     image_height_stddev,
                     image_format,
+                    images_count_min,
+                    images_count_max,
                     output_format,
                 )
                 generic_dataset_json = (
@@ -480,6 +498,8 @@ class LlmInputs:
         image_height_mean: int,
         image_height_stddev: int,
         image_format: ImageFormat,
+        images_count_min: int,
+        images_count_max: int,
         output_format: OutputFormat,
     ) -> Dict[str, Any]:
         dataset_json: Dict[str, Any] = {}
@@ -495,14 +515,18 @@ class LlmInputs:
             row["row"]["text_input"] = synthetic_prompt
 
             if output_format == OutputFormat.OPENAI_VISION:
-                synthetic_image = cls._create_synthetic_image(
-                    image_width_mean=image_width_mean,
-                    image_width_stddev=image_width_stddev,
-                    image_height_mean=image_height_mean,
-                    image_height_stddev=image_height_stddev,
-                    image_format=image_format,
-                )
-                row["row"]["image"] = synthetic_image
+                N = random.randint(images_count_min, images_count_max)
+                synthetic_images = [
+                    cls._create_synthetic_image(
+                        image_width_mean=image_width_mean,
+                        image_width_stddev=image_width_stddev,
+                        image_height_mean=image_height_mean,
+                        image_height_stddev=image_height_stddev,
+                        image_format=image_format,
+                    )
+                    for _ in range(N)
+                ]
+                row["row"]["images"] = synthetic_images
 
             dataset_json["rows"].append(row)
 
@@ -607,8 +631,9 @@ class LlmInputs:
         dataset_json["features"] = [{"name": "text_input"}]
         dataset_json["rows"] = []
         for prompt, image in zip(prompts, images):
-            content = {"text_input": prompt}
-            content.update({"image": image} if image else {})
+            # (TMA-2004) support variable images per request through input file
+            content: Dict[str, Any] = {"text_input": prompt}
+            content.update({"images": [image]} if image else {})
             dataset_json["rows"].append({"row": content})
 
         return dataset_json
@@ -652,16 +677,19 @@ class LlmInputs:
         Converts to multi-modal content format of OpenAI Chat Completions API.
         """
         for row in generic_dataset_json["rows"]:
-            if row["image"]:
+            if row["images"]:
                 row["text_input"] = [
                     {
                         "type": "text",
                         "text": row["text_input"],
                     },
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": row["image"]},
-                    },
+                    *[
+                        {
+                            "type": "image_url",
+                            "image_url": {"url": image},
+                        }
+                        for image in row["images"]
+                    ],
                 ]
 
         return generic_dataset_json

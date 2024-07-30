@@ -131,6 +131,12 @@ def _check_image_input_args(
         parser.error(
             "Both --image-width-stddev and --image-height-stddev values must be non-negative."
         )
+    if args.images_count_min < 0:
+        parser.error("--images-count-min must be a non-negative integer.")
+    if args.images_count_max < args.images_count_min:
+        parser.error(
+            "--images-count-max must be greater than or equal to --images-count-min."
+        )
 
     args = _convert_str_to_enum_entry(args, "image_format", ImageFormat)
     return args
@@ -479,6 +485,22 @@ def _add_image_input_args(parser):
         required=False,
         help=f"The compression format of the images. "
         "If format is not selected, format of generated image is selected at random",
+    )
+
+    input_group.add_argument(
+        "--images-count-min",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGES_COUNT_MIN,
+        required=False,
+        help=f"Minimum number of synthetic images to be added to a prompt.",
+    )
+
+    input_group.add_argument(
+        "--images-count-max",
+        type=int,
+        default=LlmInputs.DEFAULT_IMAGES_COUNT_MAX,
+        required=False,
+        help=f"Maximum number of synthetic images to be added to a prompt.",
     )
 
 
