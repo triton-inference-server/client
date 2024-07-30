@@ -25,6 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import random
+from collections import namedtuple
 from pathlib import Path
 from unittest.mock import mock_open, patch
 
@@ -36,6 +37,7 @@ from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.inputs_utils import (
     DEFAULT_LENGTH,
     DEFAULT_STARTING_INDEX,
+    ImageFormat,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
@@ -89,6 +91,7 @@ class TestLlmInputs:
         ("triton", "tensorrtllm", OutputFormat.TENSORRTLLM),
         ("openai", "v1/completions", OutputFormat.OPENAI_COMPLETIONS),
         ("openai", "v1/chat/completions", OutputFormat.OPENAI_CHAT_COMPLETIONS),
+        ("openai", "v1/chat/completions", OutputFormat.OPENAI_VISION),
     ]
 
     @pytest.fixture
@@ -219,12 +222,54 @@ class TestLlmInputs:
         for i, prompt in enumerate(expected_prompts):
             assert pa_json["data"][i]["payload"][0]["messages"][0]["content"] == prompt
 
+    @patch("pathlib.Path.exists", return_value=True)
+    @patch(
+        "genai_perf.llm_inputs.dataset_retriever.DatasetRetriever._read_image_content",
+        return_value="data:image/png;base64,...",
+    )
+    @patch(
+        "builtins.open",
+        new_callable=mock_open,
+        read_data=(
+            '{"text_input": "prompt1", "image": "image1.png"}\n'
+            '{"text_input": "prompt2", "image": "image2.png"}\n'
+            '{"text_input": "prompt3", "image": "image3.png"}\n'
+        ),
+    )
+    def test_get_input_file_with_multi_modal_data(
+        self, mock_exists, mock_image, mock_file
+    ):
+        Data = namedtuple("Data", ["text_input", "image"])
+        expected_data = [
+            Data(text_input="prompt1", image="data:image/png;base64,..."),
+            Data(text_input="prompt2", image="data:image/png;base64,..."),
+            Data(text_input="prompt3", image="data:image/png;base64,..."),
+        ]
+
+        pa_json = LlmInputs.create_llm_inputs(
+            input_type=PromptSource.FILE,
+            input_filename=Path("somefile.txt"),
+            output_format=OutputFormat.OPENAI_VISION,
+            model_name=["test_model"],
+            image_format=ImageFormat.PNG,
+        )
+
+        assert pa_json is not None
+        assert len(pa_json["data"]) == len(expected_data)
+        for i, data in enumerate(expected_data):
+            content = pa_json["data"][i]["payload"][0]["messages"][0]["content"]
+            assert content[0]["type"] == "text"
+            assert content[0]["text"] == data.text_input
+            assert content[1]["type"] == "image_url"
+            assert content[1]["image_url"] == {"url": data.image}
+
     @pytest.mark.parametrize(
         "input_type, output_format",
         [
             (PromptSource.DATASET, OutputFormat.OPENAI_EMBEDDINGS),
             (PromptSource.DATASET, OutputFormat.VLLM),
             (PromptSource.DATASET, OutputFormat.RANKINGS),
+            (PromptSource.DATASET, OutputFormat.OPENAI_VISION),
             (PromptSource.SYNTHETIC, OutputFormat.OPENAI_EMBEDDINGS),
             (PromptSource.SYNTHETIC, OutputFormat.VLLM),
             (PromptSource.SYNTHETIC, OutputFormat.RANKINGS),

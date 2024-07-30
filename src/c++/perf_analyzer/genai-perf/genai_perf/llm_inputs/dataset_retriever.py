@@ -28,10 +28,13 @@ from pathlib import Path
 from typing import Any, Dict, List
 
 import requests
+from genai_perf import utils
 from genai_perf.exceptions import GenAIPerfException
+from genai_perf.llm_inputs.inputs_utils import ImageFormat, OutputFormat
+from genai_perf.llm_inputs.synthetic_image_generator import SyntheticImageGenerator
 from genai_perf.llm_inputs.synthetic_prompt_generator import SyntheticPromptGenerator
 from genai_perf.tokenizer import Tokenizer
-from genai_perf.utils import load_json_str
+from PIL import Image
 
 
 class DatasetRetriever:
@@ -56,26 +59,58 @@ class DatasetRetriever:
         ]
         return formatted_rows
 
+    # (TMA-2018) decouple output_format from this method
     @staticmethod
-    def from_file(file_path: Path) -> List[Dict[str, str]]:
-        with open(file_path, "r") as file:
-            data = [load_json_str(line) for line in file]
+    def from_file(file_path: Path, output_format: OutputFormat) -> List[Dict[str, str]]:
+        contents = DatasetRetriever._load_file_content(file_path)
 
-            for item in data:
-                if not isinstance(item, dict):
+        dataset = []
+        for content in contents:
+            data = {"text_input": content.get("text_input", "")}
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                img_filename = content.get("image", "")
+                encoded_img = DatasetRetriever._read_image_content(img_filename)
+                data["image"] = encoded_img
+
+            dataset.append(data)
+        return dataset
+
+    @staticmethod
+    def _load_file_content(file_path: Path) -> List[Dict[str, str]]:
+        contents = []
+        with open(file_path, "r") as file:
+            for line in file:
+                content = utils.load_json_str(line)
+                if not isinstance(content, dict):
                     raise GenAIPerfException(
                         "File content is not in the expected format."
                     )
-                if "text_input" not in item:
+                if "text_input" not in content:
                     raise GenAIPerfException(
-                        f"Missing 'text_input' field in file item: {item}"
+                        f"Missing 'text_input' field in file content: {content}"
                     )
-                if len(item) != 1:
-                    raise GenAIPerfException(
-                        f"Field other than 'text_input' field found in file item: {item}"
-                    )
+                contents.append(content)
 
-            return [{"text_input": item["text_input"]} for item in data]
+        return contents
+
+    @staticmethod
+    def _read_image_content(filename: str) -> str:
+        try:
+            img = Image.open(filename)
+        except:
+            raise GenAIPerfException(
+                f"Error occurred while opening an image file: {filename}"
+            )
+
+        if img.format.lower() not in utils.get_enum_names(ImageFormat):
+            raise GenAIPerfException(
+                f"Unsupported image format '{img.format}' of "
+                f"the image '{filename}'."
+            )
+
+        img_base64 = utils.encode_image(img, img.format)
+        return f"data:image/{img.format.lower()};base64,{img_base64}"
 
     @staticmethod
     def from_directory(directory_path: Path) -> Dict:
@@ -89,7 +124,7 @@ class DatasetRetriever:
             # Get the file name without suffix
             key = file_path.stem
             with open(file_path, "r") as file:
-                data[key] = [load_json_str(line) for line in file]
+                data[key] = [utils.load_json_str(line) for line in file]
 
         # Create rows with keys based on file names without suffix
         num_entries = len(next(iter(data.values())))
@@ -105,11 +140,29 @@ class DatasetRetriever:
         prompt_tokens_mean: int,
         prompt_tokens_stddev: int,
         num_of_output_prompts: int,
+        image_width_mean: int,
+        image_width_stddev: int,
+        image_height_mean: int,
+        image_height_stddev: int,
+        image_format: ImageFormat,
+        output_format: OutputFormat,
     ) -> List[Dict[str, str]]:
-        synthetic_prompts = []
+        synthetic_dataset = []
         for _ in range(num_of_output_prompts):
-            synthetic_prompt = SyntheticPromptGenerator.create_synthetic_prompt(
+            prompt = SyntheticPromptGenerator.create_synthetic_prompt(
                 tokenizer, prompt_tokens_mean, prompt_tokens_stddev
             )
-            synthetic_prompts.append({"text_input": synthetic_prompt})
-        return synthetic_prompts
+            data = {"text_input": prompt}
+
+            if output_format == OutputFormat.OPENAI_VISION:
+                image = SyntheticImageGenerator.create_synthetic_image(
+                    image_width_mean=image_width_mean,
+                    image_width_stddev=image_width_stddev,
+                    image_height_mean=image_height_mean,
+                    image_height_stddev=image_height_stddev,
+                    image_format=image_format,
+                )
+                data["image"] = image
+
+            synthetic_dataset.append(data)
+        return synthetic_dataset
