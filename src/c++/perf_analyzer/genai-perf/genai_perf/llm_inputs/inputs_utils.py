@@ -45,12 +45,18 @@ class OutputFormat(Enum):
     OPENAI_CHAT_COMPLETIONS = auto()
     OPENAI_COMPLETIONS = auto()
     OPENAI_EMBEDDINGS = auto()
+    OPENAI_VISION = auto()
     RANKINGS = auto()
     TENSORRTLLM = auto()
     VLLM = auto()
 
     def to_lowercase(self):
         return self.name.lower()
+
+
+class ImageFormat(Enum):
+    PNG = auto()
+    JPEG = auto()
 
 
 DEFAULT_STARTING_INDEX = 0
@@ -63,3 +69,9 @@ DEFAULT_PROMPT_TOKENS_STDDEV = 0
 DEFAULT_OUTPUT_TOKENS_MEAN = -1
 DEFAULT_OUTPUT_TOKENS_STDDEV = 0
 DEFAULT_NUM_PROMPTS = 100
+
+# Images
+DEFAULT_IMAGE_WIDTH_MEAN = 100
+DEFAULT_IMAGE_WIDTH_STDDEV = 0
+DEFAULT_IMAGE_HEIGHT_MEAN = 100
+DEFAULT_IMAGE_HEIGHT_STDDEV = 0

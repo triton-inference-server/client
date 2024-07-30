@@ -42,12 +42,17 @@ from genai_perf.constants import (
 )
 from genai_perf.llm_inputs.inputs_utils import (
     DEFAULT_BATCH_SIZE,
+    DEFAULT_IMAGE_HEIGHT_MEAN,
+    DEFAULT_IMAGE_HEIGHT_STDDEV,
+    DEFAULT_IMAGE_WIDTH_MEAN,
+    DEFAULT_IMAGE_WIDTH_STDDEV,
     DEFAULT_NUM_PROMPTS,
     DEFAULT_OUTPUT_TOKENS_MEAN,
     DEFAULT_OUTPUT_TOKENS_STDDEV,
     DEFAULT_PROMPT_TOKENS_MEAN,
     DEFAULT_PROMPT_TOKENS_STDDEV,
     DEFAULT_RANDOM_SEED,
+    ImageFormat,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
@@ -80,6 +85,7 @@ logger = logging.getLogger(__name__)
 _endpoint_type_map = {
     "chat": "v1/chat/completions",
     "completions": "v1/completions",
+    "vision": "v1/chat/completions",
     "embeddings": "v1/embeddings",
     "rankings": "v1/ranking",
 }
@@ -121,6 +127,25 @@ def _check_compare_args(
     return args
 
 
+def _check_image_input_args(
+    parser: argparse.ArgumentParser, args: argparse.Namespace
+) -> argparse.Namespace:
+    """
+    Sanity check the image input args
+    """
+    if args.image_width_mean <= 0 or args.image_height_mean <= 0:
+        parser.error(
+            "Both --image-width-mean and --image-height-mean values must be positive."
+        )
+    if args.image_width_stddev < 0 or args.image_height_stddev < 0:
+        parser.error(
+            "Both --image-width-stddev and --image-height-stddev values must be non-negative."
+        )
+
+    args = _convert_str_to_enum_entry(args, "image_format", ImageFormat)
+    return args
+
+
 def _check_conditional_args(
     parser: argparse.ArgumentParser, args: argparse.Namespace
 ) -> argparse.Namespace:
@@ -143,6 +168,10 @@ def _check_conditional_args(
                 args.output_format = OutputFormat.OPENAI_EMBEDDINGS
             elif args.endpoint_type == "rankings":
                 args.output_format = OutputFormat.RANKINGS
+            # (TMA-1986) deduce vision format from chat completions + image CLI
+            # because there's no openai vision endpoint.
+            elif args.endpoint_type == "vision":
+                args.output_format = OutputFormat.OPENAI_VISION
 
             if args.endpoint is not None:
                 args.endpoint = args.endpoint.lstrip(" /")
@@ -417,6 +446,51 @@ def _add_input_args(parser):
     )
 
 
+def _add_image_input_args(parser):
+    input_group = parser.add_argument_group("Image Input")
+
+    input_group.add_argument(
+        "--image-width-mean",
+        type=int,
+        default=DEFAULT_IMAGE_WIDTH_MEAN,
+        required=False,
+        help=f"The mean width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-width-stddev",
+        type=int,
+        default=DEFAULT_IMAGE_WIDTH_STDDEV,
+        required=False,
+        help=f"The standard deviation of width of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-mean",
+        type=int,
+        default=DEFAULT_IMAGE_HEIGHT_MEAN,
+        required=False,
+        help=f"The mean height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-height-stddev",
+        type=int,
+        default=DEFAULT_IMAGE_HEIGHT_STDDEV,
+        required=False,
+        help=f"The standard deviation of height of images when generating synthetic image data.",
+    )
+
+    input_group.add_argument(
+        "--image-format",
+        type=str,
+        choices=utils.get_enum_names(ImageFormat),
+        required=False,
+        help=f"The compression format of the images. "
+        "If format is not selected, format of generated image is selected at random",
+    )
+
+
 def _add_profile_args(parser):
     profile_group = parser.add_argument_group("Profiling")
     load_management_group = profile_group.add_mutually_exclusive_group(required=False)
@@ -505,7 +579,7 @@ def _add_endpoint_args(parser):
     endpoint_group.add_argument(
         "--endpoint-type",
         type=str,
-        choices=["chat", "completions", "embeddings", "rankings"],
+        choices=["chat", "completions", "vision", "embeddings", "rankings"],
         required=False,
         help=f"The endpoint-type to send requests to on the "
         'server. This is only used with the "openai" service-kind.',
@@ -664,6 +738,7 @@ def _parse_profile_args(subparsers) -> argparse.ArgumentParser:
     )
     _add_endpoint_args(profile)
     _add_input_args(profile)
+    _add_image_input_args(profile)
     _add_profile_args(profile)
     _add_output_args(profile)
     _add_other_args(profile)
@@ -743,6 +818,7 @@ def refine_args(
         args = _infer_prompt_source(args)
         args = _check_model_args(parser, args)
         args = _check_conditional_args(parser, args)
+        args = _check_image_input_args(parser, args)
         args = _check_load_manager_args(args)
         args = _set_artifact_paths(args)
     elif args.subcommand == Subcommand.COMPARE.to_lowercase():

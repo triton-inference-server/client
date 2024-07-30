@@ -34,8 +34,25 @@ import genai_perf.logging as logging
 # Skip type checking to avoid mypy error
 # Issue: https://github.com/python/mypy/issues/10632
 import yaml  # type: ignore
+from PIL import Image
 
 logger = logging.getLogger(__name__)
+
+
+def encode_image(img: Image, format: str):
+    """Encodes an image into base64 encoding."""
+    # Lazy import for vision related endpoints
+    import base64
+    from io import BytesIO
+
+    # JPEG does not support P or RGBA mode (commonly used for PNG) so it needs
+    # to be converted to RGB before an image can be saved as JPEG format.
+    if format == "JPEG" and img.mode != "RGB":
+        img = img.convert("RGB")
+
+    buffered = BytesIO()
+    img.save(buffered, format=format)
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
 def remove_sse_prefix(msg: str) -> str:

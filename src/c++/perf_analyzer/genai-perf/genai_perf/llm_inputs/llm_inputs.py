@@ -32,6 +32,10 @@ from genai_perf.constants import CNN_DAILY_MAIL, DEFAULT_INPUT_DATA_JSON, OPEN_O
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.dataset_retriever import DatasetRetriever
 from genai_perf.llm_inputs.inputs_utils import (
+    DEFAULT_IMAGE_HEIGHT_MEAN,
+    DEFAULT_IMAGE_HEIGHT_STDDEV,
+    DEFAULT_IMAGE_WIDTH_MEAN,
+    DEFAULT_IMAGE_WIDTH_STDDEV,
     DEFAULT_LENGTH,
     DEFAULT_NUM_PROMPTS,
     DEFAULT_OUTPUT_TOKENS_MEAN,
@@ -40,6 +44,7 @@ from genai_perf.llm_inputs.inputs_utils import (
     DEFAULT_PROMPT_TOKENS_STDDEV,
     DEFAULT_RANDOM_SEED,
     DEFAULT_STARTING_INDEX,
+    ImageFormat,
     ModelSelectionStrategy,
     OutputFormat,
     PromptSource,
@@ -76,6 +81,11 @@ class LlmInputs:
         output_tokens_deterministic: bool = False,
         prompt_tokens_mean: int = DEFAULT_PROMPT_TOKENS_MEAN,
         prompt_tokens_stddev: int = DEFAULT_PROMPT_TOKENS_STDDEV,
+        image_width_mean: int = DEFAULT_IMAGE_WIDTH_MEAN,
+        image_width_stddev: int = DEFAULT_IMAGE_WIDTH_STDDEV,
+        image_height_mean: int = DEFAULT_IMAGE_HEIGHT_MEAN,
+        image_height_stddev: int = DEFAULT_IMAGE_HEIGHT_STDDEV,
+        image_format: ImageFormat = ImageFormat.PNG,
         random_seed: int = DEFAULT_RANDOM_SEED,
         num_of_output_prompts: int = DEFAULT_NUM_PROMPTS,
         add_model_name: bool = False,
@@ -92,6 +102,12 @@ class LlmInputs:
         random.seed(random_seed)
 
         if input_type == PromptSource.DATASET:
+            # (TMA-1990) support VLM input from public dataset
+            if output_format == OutputFormat.OPENAI_VISION:
+                raise GenAIPerfException(
+                    f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
+                    "does not support dataset as input."
+                )
             dataset = DatasetRetriever.from_url(
                 cls.dataset_url_map[dataset_name], starting_index, length
             )
@@ -101,6 +117,12 @@ class LlmInputs:
                 prompt_tokens_mean,
                 prompt_tokens_stddev,
                 num_of_output_prompts,
+                image_width_mean,
+                image_width_stddev,
+                image_height_mean,
+                image_height_stddev,
+                image_format,
+                output_format,
             )
         elif input_type == PromptSource.FILE:
             input_filename = cast(Path, input_filename)
@@ -108,7 +130,7 @@ class LlmInputs:
             # if output_format == OutputFormat.RANKINGS:
             #     dataset = DatasetRetriever.from_directory(input_filename)
             # else:
-            dataset = DatasetRetriever.from_file(input_filename)
+            dataset = DatasetRetriever.from_file(input_filename, output_format)
         else:
             raise GenAIPerfException("Input source is not recognized.")
 

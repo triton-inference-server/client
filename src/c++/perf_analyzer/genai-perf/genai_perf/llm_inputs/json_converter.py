@@ -41,6 +41,7 @@ class JSONConverter:
                 for item in dataset:
                     row_data = {
                         "text_input": item.get("text_input", ""),
+                        "image": item.get("image", ""),
                         "system_prompt": item.get("system_prompt", ""),
                         "response": item.get("response", ""),
                     }

@@ -25,7 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import random
-from typing import Dict, List
+from typing import Any, Dict, List, Union
 
 from genai_perf.exceptions import GenAIPerfException
 from genai_perf.llm_inputs.inputs_utils import (
@@ -46,6 +46,7 @@ class OutputFormatConverterFactory:
         converters = {
             OutputFormat.OPENAI_CHAT_COMPLETIONS: OpenAIChatCompletionsConverter,
             OutputFormat.OPENAI_COMPLETIONS: OpenAICompletionsConverter,
+            OutputFormat.OPENAI_VISION: OpenAIChatCompletionsConverter,
             OutputFormat.OPENAI_EMBEDDINGS: OpenAIEmbeddingsConverter,
             OutputFormat.RANKINGS: RankingsConverter,
             OutputFormat.VLLM: VLLMConverter,
@@ -105,8 +106,8 @@ class OpenAIChatCompletionsConverter(BaseConverter):
 
         for index, row in enumerate(generic_dataset["rows"]):
             model = self._select_model_name(model_name, index, model_selection_strategy)
-            text_content = row["row"]["text_input"]
-            messages = [{"role": "user", "content": text_content}]
+            content = self._generate_content(data=row["row"])
+            messages = [{"role": "user", "content": content}]
             payload: Dict = {"messages": messages}
 
             if add_model_name:
@@ -122,6 +123,28 @@ class OpenAIChatCompletionsConverter(BaseConverter):
             pa_json["data"].append({"payload": [payload]})
 
         return pa_json
+
+    def _generate_content(
+        self, data: Dict[str, str]
+    ) -> Union[str, List[Dict[str, Any]]]:
+        """
+        Generate either text only or multi-modal content for OpenAI Chat Completions API.
+        """
+        content: str | List[Dict[str, Any]] = data["text_input"]
+
+        # convert into multi-modal content format when image exists
+        if data["image"]:
+            content = [
+                {
+                    "type": "text",
+                    "text": data["text_input"],
+                },
+                {
+                    "type": "image_url",
+                    "image_url": {"url": data["image"]},
+                },
+            ]
+        return content
 
 
 class OpenAICompletionsConverter(BaseConverter):
