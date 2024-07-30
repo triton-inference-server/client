@@ -59,6 +59,7 @@ class DatasetRetriever:
         ]
         return formatted_rows
 
+    # (TMA-2018) decouple output_format from this method
     @staticmethod
     def from_file(file_path: Path, output_format: OutputFormat) -> List[Dict[str, str]]:
         contents = DatasetRetriever._load_file_content(file_path)
@@ -69,7 +70,7 @@ class DatasetRetriever:
 
             if output_format == OutputFormat.OPENAI_VISION:
                 img_filename = content.get("image", "")
-                encoded_img = DatasetRetriever._encode_image_to_base64(img_filename)
+                encoded_img = DatasetRetriever._read_image_content(img_filename)
                 data["image"] = encoded_img
 
             dataset.append(data)
@@ -94,7 +95,7 @@ class DatasetRetriever:
         return contents
 
     @staticmethod
-    def _encode_image_to_base64(filename: str) -> str:
+    def _read_image_content(filename: str) -> str:
         try:
             img = Image.open(filename)
         except:

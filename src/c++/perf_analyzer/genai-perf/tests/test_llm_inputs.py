@@ -224,7 +224,7 @@ class TestLlmInputs:
 
     @patch("pathlib.Path.exists", return_value=True)
     @patch(
-        "genai_perf.llm_inputs.dataset_retriever.DatasetRetriever._encode_image_to_base64",
+        "genai_perf.llm_inputs.dataset_retriever.DatasetRetriever._read_image_content",
         return_value="data:image/png;base64,...",
     )
     @patch(

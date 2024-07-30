@@ -102,12 +102,6 @@ class LlmInputs:
         random.seed(random_seed)
 
         if input_type == PromptSource.DATASET:
-            # (TMA-1990) support VLM input from public dataset
-            if output_format == OutputFormat.OPENAI_VISION:
-                raise GenAIPerfException(
-                    f"{OutputFormat.OPENAI_VISION.to_lowercase()} currently "
-                    "does not support dataset as input."
-                )
             dataset = DatasetRetriever.from_url(
                 cls.dataset_url_map[dataset_name], starting_index, length
             )
@@ -169,6 +163,7 @@ class LlmInputs:
                 PromptSource.DATASET,
             ],
             OutputFormat.RANKINGS: [PromptSource.DATASET, PromptSource.SYNTHETIC],
+            OutputFormat.OPENAI_VISION: [PromptSource.DATASET],
         }
 
         if input_type in unsupported_combinations.get(output_format, []):
