@@ -123,3 +123,27 @@ def test_base64_encoding_with_different_formats(image_format):
     img_bytes = BytesIO(img_data)
     image = Image.open(img_bytes)
     assert image.format == image_format.name
+
+
+def test_random_image_format():
+    random.seed(123)
+    img1 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=100,
+        image_width_stddev=100,
+        image_height_mean=100,
+        image_height_stddev=100,
+        image_format=None,
+    )
+
+    random.seed(456)
+    img2 = SyntheticImageGenerator.create_synthetic_image(
+        image_width_mean=100,
+        image_width_stddev=100,
+        image_height_mean=100,
+        image_height_stddev=100,
+        image_format=None,
+    )
+
+    # check prefix
+    assert img1.startswith("data:image/png")
+    assert img2.startswith("data:image/jpeg")
