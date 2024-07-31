@@ -60,7 +60,58 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER OR TRITON_ENABLE_EXAMPLE
     PRIVATE
       client-common-library
   )
-endif()
+
+  add_library(
+    json_utils_static STATIC
+    $<TARGET_OBJECTS:json-utils-library>
+  )
+
+  add_library(
+      TritonClient::json_utils_static ALIAS json_utils_static
+  )
+
+  foreach(_json_target json-utils-library json_utils_static)
+    target_compile_features(${_json_target} PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
+    target_compile_options(
+      ${_json_target} PRIVATE
+      $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+        -Wall -Wextra -Wno-unused-parameter -Werror>
+      $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
+    )
+
+    set_target_properties(
+      ${_json_target}
+      PROPERTIES
+        POSITION_INDEPENDENT_CODE ON
+    )
+
+    target_include_directories(
+      ${_json_target}
+      PUBLIC
+        $<INSTALL_INTERFACE:include>
+        $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+      PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}
+    )
+
+    install(
+        FILES
+        ${CMAKE_CURRENT_SOURCE_DIR}/json_utils.h
+        DESTINATION include
+    )
+  endforeach()
+
+  install(
+    TARGETS
+      json_utils_static
+    EXPORT
+      triton-client-targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  )
+
+endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_PERF_ANALYZER OR TRITON_ENABLE_EXAMPLES
 
 #
 # shm_utils
@@ -73,6 +124,56 @@ target_link_libraries(
   shm-utils-library
   PRIVATE
     client-common-library
+)
+
+add_library(
+  shm_utils_static STATIC
+  $<TARGET_OBJECTS:shm-utils-library>
+)
+
+add_library(
+    TritonClient::shm_utils_static ALIAS shm_utils_static
+)
+
+foreach(_shm_target shm-utils-library shm_utils_static)
+  target_compile_features(${_shm_target} PRIVATE cxx_std_${TRITON_MIN_CXX_STANDARD})
+  target_compile_options(
+    ${_shm_target} PRIVATE
+    $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
+      -Wall -Wextra -Wno-unused-parameter -Werror>
+    $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
+  )
+
+  set_target_properties(
+    ${_shm_target}
+    PROPERTIES
+      POSITION_INDEPENDENT_CODE ON
+  )
+
+  target_include_directories(
+    ${_shm_target}
+    PUBLIC
+      $<INSTALL_INTERFACE:include>
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
+    PRIVATE
+      ${CMAKE_CURRENT_SOURCE_DIR}
+  )
+
+  install(
+      FILES
+      ${CMAKE_CURRENT_SOURCE_DIR}/shm_utils.h
+      DESTINATION include
+  )
+endforeach()
+
+install(
+  TARGETS
+    shm_utils_static
+  EXPORT
+    triton-client-targets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
 if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER)
@@ -412,6 +513,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PERF_ANALYZER
       FILES
       ${CMAKE_CURRENT_SOURCE_DIR}/common.h
       ${CMAKE_CURRENT_SOURCE_DIR}/ipc.h
+      ${CMAKE_CURRENT_SOURCE_DIR}/cencode.h
       DESTINATION include
   )
 

@@ -54,6 +54,9 @@ option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
 option(TRITON_ENABLE_ZLIB "Include ZLIB library in build" ON)
 
+# Package Perf Analyzer with the Python Client -- Intended to be used by PA repo
+option(TRITON_PACKAGE_PERF_ANALYZER "Include Perf Analyzer in pip wheel" OFF)
+
 set(TRITON_REPO_ORGANIZATION "https://github.com/triton-inference-server" CACHE STRING "Git repository to pull from")
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 set(TRITON_THIRD_PARTY_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/third_party repo")
@@ -223,6 +226,7 @@ if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
       -DTRITON_ENABLE_PERF_ANALYZER_OPENAI:BOOL=${TRITON_ENABLE_PERF_ANALYZER_OPENAI}
       -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
       -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+      -DTRITON_PACKAGE_PERF_ANALYZER:BOOL=${TRITON_PACKAGE_PERF_ANALYZER}
       -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
       -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
       -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
