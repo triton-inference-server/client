@@ -1,4 +1,4 @@
-// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -2116,11 +2116,6 @@ InferenceServerHttpClient::PreRunProcessing(
   // Add the buffers holding input tensor data
   bool all_inputs_are_json{true};
   for (const auto this_input : inputs) {
-    err = this_input->ValidateData();
-    if (!err.IsOk()) {
-      return err;
-    }
-
     if (this_input->BinaryData()) {
       all_inputs_are_json = false;
     }

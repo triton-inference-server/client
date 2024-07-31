@@ -1,4 +1,4 @@
-// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -25,10 +25,6 @@
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #include "common.h"
-
-#include <numeric>
-
-#include "triton/common/model_config.h"
 
 namespace triton { namespace client {
 
@@ -233,26 +229,6 @@ Error
 InferInput::SetBinaryData(const bool binary_data)
 {
   binary_data_ = binary_data;
-  return Error::Success;
-}
-
-Error
-InferInput::ValidateData() const
-{
-  inference::DataType datatype =
-      triton::common::ProtocolStringToDataType(datatype_);
-  // String inputs will be checked at core and backend to reduce overhead.
-  if (datatype == inference::DataType::TYPE_STRING) {
-    return Error::Success;
-  }
-
-  int64_t expected_byte_size = triton::common::GetByteSize(datatype, shape_);
-  if ((int64_t)byte_size_ != expected_byte_size) {
-    return Error(
-        "input '" + name_ + "' got unexpected byte size " +
-        std::to_string(byte_size_) + ", expected " +
-        std::to_string(expected_byte_size));
-  }
   return Error::Success;
 }
 

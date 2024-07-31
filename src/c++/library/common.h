@@ -1,4 +1,4 @@
-// Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -353,10 +353,6 @@ class InferInput {
 
   /// \return Error object indicating success or failure.
   Error SetBinaryData(const bool binary_data);
-
-  /// Validate input has data and input shape matches input data.
-  /// \return Error object indicating success of failure.
-  Error ValidateData() const;
 
  private:
 #ifdef TRITON_INFERENCE_SERVER_CLIENT_CLASS
