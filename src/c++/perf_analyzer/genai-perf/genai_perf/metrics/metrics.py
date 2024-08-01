@@ -86,11 +86,3 @@ class Metrics:
             return self._base_names[metric_name]
         else:
             raise KeyError(f"No metric named '{metric_name}' exists.")
-
-    def calculate_goodput(self, ttft_threshold: int, itl_threshold: int) -> int:
-        """Calculate the number of requests meeting the TTFT and ITL thresholds."""
-        goodput_count = 0
-        for ttft, itl in zip(self.time_to_first_tokens, self.inter_token_latencies):
-            if ttft < ttft_threshold and itl < itl_threshold:
-                goodput_count += 1
-        return goodput_count
