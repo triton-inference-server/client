@@ -129,17 +129,4 @@ class ConsoleExporter:
         if not self._args.streaming and metric_name in streaming_metrics:
             return True
         return False
-    
-    def _count_good_req(self):
-        ttft_constraint_ms, itl_constraint_ms = self._args.goodput_constraints # List:[TTFT, ITL]
-        # ms to ns
-        ttft_constraint, itl_constraint = ttft_constraint_ms * 1e6, itl_constraint_ms * 1e6
-        time_to_first_tokens = self._metrics.time_to_first_tokens
-        inter_token_latencies = self._metrics.inter_token_latencies
-        good_req_count = 0
-        total_req = len(time_to_first_tokens)
-        for ttft, itl in zip(time_to_first_tokens, inter_token_latencies):
-            if ttft <= ttft_constraint and itl <= itl_constraint:
-                good_req_count += 1
-        return total_req, good_req_count
 
