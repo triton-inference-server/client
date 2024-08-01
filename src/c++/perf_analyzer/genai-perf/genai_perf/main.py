@@ -113,7 +113,8 @@ def report_output(data_parser: ProfileDataParser, args: Namespace) -> None:
         raise GenAIPerfException("No valid infer mode specified")
 
     stats = data_parser.get_statistics(infer_mode, load_level)
-    reporter = OutputReporter(stats, args)
+    benchmark_duration = data_parser.get_benchmark_duration()
+    reporter = OutputReporter(stats, args, benchmark_duration)
     reporter.report_output()
     if args.generate_plots:
         create_plots(args)

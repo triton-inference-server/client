@@ -93,14 +93,14 @@ Example output:
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
 ┃                Statistic ┃    avg ┃    min ┃    max ┃    p99 ┃    p90 ┃    p75 ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│ Time to first token (ms) │   6.82 │   3.92 │  14.56 │  14.43 │  13.88 │   9.29 │
-│ Inter token latency (ms) │   1.69 │   1.17 │   3.86 │   3.64 │   2.10 │   1.84 │
-│     Request latency (ms) │  63.25 │  47.92 │ 144.99 │ 135.36 │  86.73 │  64.92 │
-│   Output sequence length │  34.73 │  30.00 │  42.00 │  41.79 │  39.80 │  36.75 │
+│ Time to first token (ms) │   7.29 │   3.94 │  26.87 │  26.31 │  14.11 │   5.04 │
+│ Inter token latency (ms) │   1.55 │   1.41 │   1.76 │   1.76 │   1.69 │   1.64 │
+│     Request latency (ms) │ 179.21 │ 169.03 │ 206.93 │ 206.91 │ 198.91 │ 184.20 │
+│   Output sequence length │ 112.19 │ 107.00 │ 120.00 │ 119.85 │ 118.50 │ 113.50 │
 │    Input sequence length │ 200.00 │ 200.00 │ 200.00 │ 200.00 │ 200.00 │ 200.00 │
 └──────────────────────────┴────────┴────────┴────────┴────────┴────────┴────────┘
-Output token throughput (per sec): 548.66
-Request throughput (per sec): 15.80
-# Number of good requests are printed out with constraints
-Out of 22 requests, 13 are Good under the constraints of TTFT: 8.0ms, ITL: 1.6ms
+Output token throughput (per sec): 1251.61
+Request throughput (per sec): 11.16
+Out of 16 requests, 10 are Good under the constraints of TTFT: 8.00ms, ITL: 1.60ms
+Request goodput (per sec): 6.97
 ```

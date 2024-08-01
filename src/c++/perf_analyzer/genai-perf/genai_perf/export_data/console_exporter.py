@@ -41,6 +41,7 @@ class ConsoleExporter:
         self._stats = config.stats
         self._metrics = config.metrics
         self._args = config.args
+        self._benchmark_duration = config.benchmark_duration
 
     def _get_title(self):
         if self._args.endpoint_type == "embeddings":
@@ -62,18 +63,36 @@ class ConsoleExporter:
 
         console = Console()
         console.print(table)
-        
+
         # System metrics are printed after the table
         for metric in self._metrics.system_metrics:
             line = metric.name.replace("_", " ").capitalize()
             value = self._stats[metric.name]["avg"]
             line += f" ({metric.unit}): {value:.2f}"
             print(line)
+        
         if self._args.goodput_constraints:
             total_count, good_count = self._count_good_req()
             ttft_constraint, itl_constraint = self._args.goodput_constraints
-            line = "Out of {} requests, {} are Good under the constraints of TTFT: {}ms, ITL: {}ms".format(total_count, good_count, ttft_constraint, itl_constraint)        
+            line = f"Out of {total_count} requests, {good_count} are Good under the constraints of TTFT: {ttft_constraint:.2f}ms, ITL: {itl_constraint:.2f}ms"        
             print(line)
+            goodput_value = good_count / self._benchmark_duration
+            goodput_line = f"Request goodput (per sec): {goodput_value:.2f}"
+            print(goodput_line)
+            
+
+    def _count_good_req(self):
+        ttft_constraint_ms, itl_constraint_ms = self._args.goodput_constraints # List:[TTFT, ITL]
+        # ms to ns
+        ttft_constraint, itl_constraint = ttft_constraint_ms * 1e6, itl_constraint_ms * 1e6
+        time_to_first_tokens = self._metrics.time_to_first_tokens
+        inter_token_latencies = self._metrics.inter_token_latencies
+        good_req_count = 0
+        total_req = len(time_to_first_tokens)
+        for ttft, itl in zip(time_to_first_tokens, inter_token_latencies):
+            if ttft <= ttft_constraint and itl <= itl_constraint:
+                good_req_count += 1
+        return total_req, good_req_count
 
     def _construct_table(self, table: Table) -> None:
         for metric in self._metrics.request_metrics:

@@ -146,6 +146,7 @@ class LLMProfileDataParser(ProfileDataParser):
 
         # request & output token throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # to seconds
+        self._benchmark_duration = benchmark_duration
         request_throughputs = [len(requests) / benchmark_duration]
         output_token_throughputs = [sum(output_sequence_lengths) / benchmark_duration]
         return LLMMetrics(
@@ -159,7 +160,11 @@ class LLMProfileDataParser(ProfileDataParser):
             input_sequence_lengths,
             chunked_inter_token_latencies,
         )
-
+    
+    def get_benchmark_duration(self) -> float:
+        """Return the benchmark duration."""
+        return self._benchmark_duration
+    
     def _pairwise(self, iterable):
         """Generate pairs of consecutive elements from the given iterable."""
         a, b = tee(iterable)
