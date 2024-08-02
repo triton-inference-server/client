@@ -38,11 +38,10 @@ class OutputReporter:
     A class to orchestrate output generation.
     """
 
-    def __init__(self, stats: Statistics, args: Namespace, benchmark_duration: float):
+    def __init__(self, stats: Statistics, args: Namespace):
         self.args = args
         self.stats = stats
         self.stats.scale_data()
-        self.benchmark_duration = benchmark_duration
 
     def report_output(self) -> None:
         factory = DataExporterFactory()
@@ -59,5 +58,4 @@ class OutputReporter:
         config.args = self.args
         config.artifact_dir = self.args.artifact_dir
         config.extra_inputs = get_extra_inputs_as_dict(self.args)
-        config.benchmark_duration = self.benchmark_duration
         return config

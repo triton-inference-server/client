@@ -134,17 +134,12 @@ class ProfileDataParser:
 
         # request throughput
         benchmark_duration = (max_res_timestamp - min_req_timestamp) / 1e9  # to seconds
-        self._benchmark_duration = benchmark_duration
         request_throughputs = [len(requests) / benchmark_duration]
 
         return Metrics(
             request_throughputs,
             request_latencies,
         )
-
-    def get_benchmark_duration(self) -> float:
-        """Return the benchmark duration."""
-        return self._benchmark_duration
 
     def get_statistics(self, infer_mode: str, load_level: str) -> Statistics:
         """Return profile statistics if it exists."""

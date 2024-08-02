@@ -78,12 +78,12 @@ genai-perf profile \
   --output-tokens-stddev 0 \
   --output-tokens-mean-deterministic \
   --tokenizer hf-internal-testing/llama-tokenizer \
-  --concurrency 1 \
-  --measurement-interval 4000 \
+  --concurrency 4 \
+  --measurement-interval 400 \
   --profile-export-file my_profile_export.json \
   --url localhost:8001 \
   # Add TTFT and ITL requirements through CLI
-  --goodput-constraints 8 1.6
+  --goodput-constraints 10 2
 ```
 
 Example output:
@@ -93,14 +93,13 @@ Example output:
 ┏━━━━━━━━━━━━━━━━━━━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┳━━━━━━━━┓
 ┃                Statistic ┃    avg ┃    min ┃    max ┃    p99 ┃    p90 ┃    p75 ┃
 ┡━━━━━━━━━━━━━━━━━━━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━╇━━━━━━━━┩
-│ Time to first token (ms) │   7.29 │   3.94 │  26.87 │  26.31 │  14.11 │   5.04 │
-│ Inter token latency (ms) │   1.55 │   1.41 │   1.76 │   1.76 │   1.69 │   1.64 │
-│     Request latency (ms) │ 179.21 │ 169.03 │ 206.93 │ 206.91 │ 198.91 │ 184.20 │
-│   Output sequence length │ 112.19 │ 107.00 │ 120.00 │ 119.85 │ 118.50 │ 113.50 │
+│ Time to first token (ms) │  10.02 │   4.96 │  29.60 │  29.41 │  28.48 │   7.01 │
+│ Inter token latency (ms) │   1.81 │   1.61 │   2.33 │   2.30 │   2.10 │   1.84 │
+│     Request latency (ms) │ 214.04 │ 192.01 │ 275.60 │ 275.59 │ 275.23 │ 209.91 │
+│   Output sequence length │ 113.54 │ 107.00 │ 125.00 │ 124.77 │ 120.50 │ 116.00 │
 │    Input sequence length │ 200.00 │ 200.00 │ 200.00 │ 200.00 │ 200.00 │ 200.00 │
 └──────────────────────────┴────────┴────────┴────────┴────────┴────────┴────────┘
-Output token throughput (per sec): 1251.61
-Request throughput (per sec): 11.16
-Out of 16 requests, 10 are Good under the constraints of TTFT: 8.00ms, ITL: 1.60ms
-Request goodput (per sec): 6.97
+Output token throughput (per sec): 2121.18
+Request goodput (per sec): 15.57
+Request throughput (per sec): 18.68
 ```

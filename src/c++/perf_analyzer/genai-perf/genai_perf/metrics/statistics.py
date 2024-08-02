@@ -131,6 +131,8 @@ class Statistics:
             self._stats_dict[key]["unit"] = "ms"
         elif key == "request_throughput":
             self._stats_dict[key]["unit"] = "requests/sec"
+        elif key == "request_goodput":
+            self._stats_dict[key]["unit"] = "requests/sec"
         elif key.startswith("output_token_throughput"):
             self._stats_dict[key]["unit"] = "tokens/sec"
         elif "sequence_length" in key:

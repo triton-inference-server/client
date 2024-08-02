@@ -35,7 +35,6 @@ class ExporterConfig:
         self._args = None
         self._extra_inputs = None
         self._artifact_dir = None
-        self._benchmark_duration = None
 
     @property
     def stats(self):
@@ -76,13 +75,4 @@ class ExporterConfig:
     @artifact_dir.setter
     def artifact_dir(self, artifact_dir_value):
         self._artifact_dir = artifact_dir_value
-
-    @property
-    def benchmark_duration(self):
-        return self._benchmark_duration
-
-    @benchmark_duration.setter
-    def benchmark_duration(self, duration):
-        if duration <= 0:
-            raise ValueError("Benchmark duration cannot be non-positive")
-        self._benchmark_duration = duration
+        
