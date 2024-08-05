@@ -27,7 +27,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import numpy as np
 from tritonclient.utils import (
-    get_data_type_byte_size,
     np_to_triton_dtype,
     num_elements,
     raise_error,

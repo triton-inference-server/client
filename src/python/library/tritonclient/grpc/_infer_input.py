@@ -30,7 +30,7 @@ import numpy as np
 from tritonclient.grpc import service_pb2
 from tritonclient.utils import *
 
-from ._utils import get_data_type_byte_size, num_elements, raise_error
+from ._utils import num_elements, raise_error
 
 
 class InferInput:
