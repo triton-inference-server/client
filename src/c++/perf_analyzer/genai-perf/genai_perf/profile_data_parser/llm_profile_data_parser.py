@@ -174,6 +174,14 @@ class LLMProfileDataParser(ProfileDataParser):
         if self._service_kind == "openai":
             # PA sometimes receives multiple SSE responses at once (as a single
             # response). Handle these responses by merging into a single response.
+            for i in range(len(res_outputs) - 1, -1, -1):
+                response = res_outputs[i]["response"]
+                if not response.startswith("data: "):
+                    first_data = response.find("data: ")
+                    res_outputs[i - 1]["response"] = (
+                        res_outputs[i - 1]["response"] + response[0:first_data].strip()
+                    )
+                    res_outputs[i]["response"] = response[first_data:].strip()
             for i in range(len(res_outputs)):
                 response = res_outputs[i]["response"]
                 responses = response.strip().split("\n\n")
@@ -193,7 +201,9 @@ class LLMProfileDataParser(ProfileDataParser):
             # Remove responses without any content
             indices_to_remove = []
             for idx, out in enumerate(res_outputs):
-                if self._is_openai_empty_response(out["response"]):
+                if not out["response"] or self._is_openai_empty_response(
+                    out["response"]
+                ):
                     indices_to_remove.append(idx)
             indices_to_remove.sort(reverse=True)
             for index in indices_to_remove:
@@ -268,7 +278,9 @@ class LLMProfileDataParser(ProfileDataParser):
         """Extracts text/content of the OpenAI response object."""
         response = remove_sse_prefix(response)
 
-        if response == "[DONE]":
+        if response == "[DONE]" or not (
+            response.strip().startswith("{") and response.strip().endswith("}")
+        ):
             return ""
 
         data = load_json_str(response)
