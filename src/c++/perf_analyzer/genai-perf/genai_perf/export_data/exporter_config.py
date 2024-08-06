@@ -75,3 +75,4 @@ class ExporterConfig:
     @artifact_dir.setter
     def artifact_dir(self, artifact_dir_value):
         self._artifact_dir = artifact_dir_value
+        

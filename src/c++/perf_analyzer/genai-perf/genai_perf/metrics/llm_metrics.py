@@ -45,6 +45,7 @@ class LLMMetrics(Metrics):
     LLM_SYSTEM_METRICS = [
         # (TMA-1977) Make the unit consistent with statistics dict (e.g. tokens/sec)
         MetricMetadata("output_token_throughput", "per sec"),
+        MetricMetadata("request_goodput", "per sec")
     ]
 
     def __init__(
@@ -58,6 +59,7 @@ class LLMMetrics(Metrics):
         output_sequence_lengths: List[int] = [],
         input_sequence_lengths: List[int] = [],
         chunked_inter_token_latencies: List[List[int]] = [[]],
+        request_goodputs: List[float] = [],
     ) -> None:
         super().__init__(request_throughputs, request_latencies)
         self.time_to_first_tokens = time_to_first_tokens
@@ -66,6 +68,7 @@ class LLMMetrics(Metrics):
         self.output_token_throughputs_per_request = output_token_throughputs_per_request
         self.output_sequence_lengths = output_sequence_lengths
         self.input_sequence_lengths = input_sequence_lengths
+        self.request_goodputs = request_goodputs
 
         # Keeping chunked ITL (old) as a WAR to preserve visualization.
         # Excluded from data.
@@ -80,6 +83,7 @@ class LLMMetrics(Metrics):
         )
         self._base_names["output_sequence_lengths"] = "output_sequence_length"
         self._base_names["input_sequence_lengths"] = "input_sequence_length"
+        self._base_names["request_goodputs"] = "request_goodput"
 
     @property
     def request_metrics(self) -> List[MetricMetadata]:
@@ -105,4 +109,6 @@ class LLMMetrics(Metrics):
         # base metrics first and then task specific metrics. Uncomment the below
         # line to enable this order:
         # return base_metrics + self.LLM_SYSTEM_METRICS
+        # Rightnow the goodput will be printed out before throughput if there is
+        # goodput.
         return self.LLM_SYSTEM_METRICS + base_metrics

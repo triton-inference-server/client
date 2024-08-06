@@ -98,6 +98,7 @@ class Profiler:
             "image_height_mean",
             "image_height_stddev",
             "image_format",
+            "goodput",
         ]
 
         utils.remove_file(args.profile_export_file)
