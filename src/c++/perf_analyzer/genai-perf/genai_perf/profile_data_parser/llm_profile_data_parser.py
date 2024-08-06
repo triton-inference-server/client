@@ -154,7 +154,9 @@ class LLMProfileDataParser(ProfileDataParser):
         # request goodput
         request_goodputs = []
         if self._goodput_constraints:
-            request_good_count = self._count_good_req(time_to_first_tokens, inter_token_latencies)
+            request_good_count = self._count_good_req(
+                time_to_first_tokens, inter_token_latencies
+            )
             request_goodputs = [request_good_count / benchmark_duration]
 
         return LLMMetrics(
@@ -173,7 +175,9 @@ class LLMProfileDataParser(ProfileDataParser):
     def _count_good_req(self, time_to_first_tokens, inter_token_latencies):
         ttft_constraint_ms = self._goodput_constraints['ttft']
         itl_constraint_ms = self._goodput_constraints['itl']
-        ttft_constraint, itl_constraint = ttft_constraint_ms * 1e6, itl_constraint_ms * 1e6 # ms to ns
+        # ms to ns
+        ttft_constraint = ttft_constraint_ms * 1e6
+        itl_constraint = itl_constraint_ms * 1e6 
         good_req_count = 0
         for ttft, itl in zip(time_to_first_tokens, inter_token_latencies):
             if ttft <= ttft_constraint and itl <= itl_constraint:
