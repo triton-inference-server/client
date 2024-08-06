@@ -69,7 +69,7 @@ class LLMProfileDataParser(ProfileDataParser):
         self,
         filename: Path,
         tokenizer: Tokenizer,
-        goodput_constraints: List[float] = [],
+        goodput_constraints: Dict[str, float] = {},
     ) -> None:
         self._tokenizer = tokenizer
         self._goodput_constraints = goodput_constraints
@@ -171,7 +171,8 @@ class LLMProfileDataParser(ProfileDataParser):
         )
     
     def _count_good_req(self, time_to_first_tokens, inter_token_latencies):
-        ttft_constraint_ms, itl_constraint_ms = self._goodput_constraints # List:[TTFT, ITL]
+        ttft_constraint_ms = self._goodput_constraints['ttft']
+        itl_constraint_ms = self._goodput_constraints['itl']
         ttft_constraint, itl_constraint = ttft_constraint_ms * 1e6, itl_constraint_ms * 1e6 # ms to ns
         good_req_count = 0
         for ttft, itl in zip(time_to_first_tokens, inter_token_latencies):

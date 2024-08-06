@@ -94,7 +94,7 @@ class CsvExporter:
         for metric in self._metrics.system_metrics:
             metric_str = metric.name.replace("_", " ").title()
             metric_str += f" ({metric.unit})"
-            if metric.name == "request_goodput" and not self._args.goodput_constraints:
+            if metric.name == "request_goodput" and not self._args.goodput:
                 continue
             value = self._stats[metric.name]["avg"]
             csv_writer.writerow([metric_str, f"{value:.2f}"])

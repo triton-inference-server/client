@@ -245,6 +245,24 @@ def _check_load_manager_args(args: argparse.Namespace) -> argparse.Namespace:
         args.concurrency = 1
     return args
 
+def _check_goodput_args(args):
+    """
+    Parse and check goodput args
+    """
+    if args.goodput:
+        args.goodput = parse_goodput(args.goodput)
+        if 'ttft' not in args.goodput and 'itl' not in args.goodput:
+            raise argparse.ArgumentTypeError(
+                f"Invalid goodput constraints format: {args.goodput}. "
+                "Expected format is 'ttft:x itl:y', where x and y are numbers in milliseconds."
+            )
+        if 'ttft' not in args.goodput:
+            args.goodput['ttft'] = 1e9
+        if 'itl' not in args.goodput:
+            args.goodput['itl'] = 1e9
+        if args.goodput['ttft'] < 0 or args.goodput['itl'] < 0:
+            raise ValueError("Goodput constraint values must be non-negative.")
+    return args
 
 def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     """
@@ -286,6 +304,15 @@ def _set_artifact_paths(args: argparse.Namespace) -> argparse.Namespace:
     args.profile_export_file = args.artifact_dir / args.profile_export_file
     return args
 
+def parse_goodput(values):
+    constraints = {}
+    try:
+        for item in values:
+            target_metric, target_val = item.split(':')
+            constraints[target_metric] = float(target_val)
+    except ValueError:
+        raise argparse.ArgumentTypeError(f"Invalid goodput constraints format: {values}. Expected format is 'ttft:x itl:y', where x and y are numbers in milliseconds.")
+    return constraints
 
 def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
     if args.input_dataset:
@@ -655,11 +682,12 @@ def _add_goodput_args(parser):
     goodput_group = parser.add_argument_group("Goodput")
 
     goodput_group.add_argument(
-        "--goodput-constraints",
-        type=float,  
-        nargs='+',   
+        "--goodput",
+        "-g",
+        nargs='+',
         required=False,
-        help="The Goodput constraints as a list of floats."
+        help="The goodput constraints are in the format of 'ttft:x itl:y', "
+        "where x and y are numbers in milliseconds."
     )
 
 def get_extra_inputs_as_dict(args: argparse.Namespace) -> dict:
@@ -823,6 +851,7 @@ def refine_args(
         args = _check_image_input_args(parser, args)
         args = _check_load_manager_args(args)
         args = _set_artifact_paths(args)
+        args = _check_goodput_args(args)
     elif args.subcommand == Subcommand.COMPARE.to_lowercase():
         args = _check_compare_args(parser, args)
     else:

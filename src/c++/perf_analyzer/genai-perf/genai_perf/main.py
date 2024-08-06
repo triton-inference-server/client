@@ -99,7 +99,7 @@ def calculate_metrics(args: Namespace, tokenizer: Tokenizer) -> ProfileDataParse
         return LLMProfileDataParser(
             filename=args.profile_export_file,
             tokenizer=tokenizer,
-            goodput_constraints=args.goodput_constraints,
+            goodput_constraints=args.goodput,
         )
 
 
