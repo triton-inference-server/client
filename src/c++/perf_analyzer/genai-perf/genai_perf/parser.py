@@ -311,7 +311,10 @@ def parse_goodput(values):
             target_metric, target_val = item.split(':')
             constraints[target_metric] = float(target_val)
     except ValueError:
-        raise argparse.ArgumentTypeError(f"Invalid goodput constraints format: {values}. Expected format is 'ttft:x itl:y', where x and y are numbers in milliseconds.")
+        raise argparse.ArgumentTypeError(
+            f"Invalid goodput constraints format: {values}. "
+            "Expected format is 'ttft:x itl:y', where x and y are numbers in milliseconds."
+        )
     return constraints
 
 def _infer_prompt_source(args: argparse.Namespace) -> argparse.Namespace:
