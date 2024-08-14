@@ -585,11 +585,14 @@ server side.
 If writing your own gRPC clients in the language of choice consult
 gRPC guide on [cancellation](https://grpc.io/docs/guides/cancellation/#cancelling-an-rpc-call-on-the-client-side).
 
-### GRPC Error Status Codes
+### GRPC Status Codes
 
-Starting from release 24.09, the Triton Python gRPC client introduces support for gRPC error codes in streaming mode, enhancing error reporting capabilities. When this feature is enabled, the Triton server will return standard gRPC error codes and subsequently close the stream after delivering an error
-gRPC guide on [status-codes](https://grpc.io/docs/guides/status-codes/)
+Starting from release 24.09, Triton server introduces support for gRPC error codes in streaming mode for all clients enhancing error reporting capabilities. When this feature is enabled, the Triton server will return standard gRPC error codes and subsequently close the stream after delivering the error.
 This feature is optional can be enabled by adding header with `triton_grpc_error` key and `true` as value.
+See [grpc error codes](https://github.com/triton-inference-server/server/tree/main#GRPC-Status-Codes)
+in the server to learn about how this is handled on the server side.
+See gRPC guide on [status-codes](https://grpc.io/docs/guides/status-codes/) for more details.
+Below is a Python snippet to enable the feature.
 
 ```python
   triton_client = grpcclient.InferenceServerClient(triton_server_url)
