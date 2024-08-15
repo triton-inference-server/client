@@ -558,6 +558,7 @@ See [grpc error codes](https://github.com/triton-inference-server/server/tree/ma
 in the server to learn about how this is handled on the server side.
 See gRPC guide on [status-codes](https://grpc.io/docs/guides/status-codes/) for more details.
 Below is a Python snippet to enable the feature.
+Without this header Triton server will continue streaming in default mode returning error message and status inside `InferenceServerException` object within the callback provided.
 
 ```python
   triton_client = grpcclient.InferenceServerClient(triton_server_url)
