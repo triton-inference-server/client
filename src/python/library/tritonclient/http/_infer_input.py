@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 import numpy as np
 from tritonclient.utils import (
     np_to_triton_dtype,
+    num_elements,
     raise_error,
     serialize_bf16_tensor,
     serialize_byte_tensor,
@@ -55,6 +56,7 @@ class InferInput:
         self._datatype = datatype
         self._parameters = {}
         self._data = None
+        self._data_shape = None
         self._raw_data = None
 
     def name(self):
@@ -86,6 +88,37 @@ class InferInput:
             The shape of input
         """
         return self._shape
+
+    def validate_data(self):
+        """Validate input has data and input shape matches input data.
+
+        Returns
+        -------
+        None
+        """
+        # Input must set only one of the following fields: 'data', 'binary_data_size',
+        # 'shared_memory_region' in 'parameters'
+        cnt = 0
+        cnt += self._data != None
+        cnt += "binary_data_size" in self._parameters
+        cnt += "shared_memory_region" in self._parameters
+        if cnt != 1:
+            return
+
+        # Skip due to trt reformat free tensor
+        if "shared_memory_region" in self._parameters:
+            return
+
+        # Not using shared memory
+        expected_num_elements = num_elements(self._shape)
+        data_num_elements = num_elements(self._data_shape)
+        if expected_num_elements != data_num_elements:
+            raise_error(
+                "input '{}' got unexpected elements count {}, expected {}".format(
+                    self._name, data_num_elements, expected_num_elements
+                )
+            )
+        return
 
     def set_shape(self, shape):
         """Set the shape of input.
@@ -211,6 +244,7 @@ class InferInput:
             else:
                 self._raw_data = input_tensor.tobytes()
             self._parameters["binary_data_size"] = len(self._raw_data)
+        self._data_shape = input_tensor.shape
         return self
 
     def set_shared_memory(self, region_name, byte_size, offset=0):
@@ -232,6 +266,7 @@ class InferInput:
             The updated input
         """
         self._data = None
+        self._data_shape = None
         self._raw_data = None
         self._parameters.pop("binary_data_size", None)
 
