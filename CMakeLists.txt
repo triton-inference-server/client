@@ -81,15 +81,12 @@ FetchContent_MakeAvailable(repo-third-party)
 # Some libs are installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib64 instead
 # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/{LIB}/lib on Centos
 set (LIB_DIR "lib")
-# /etc/os-release does not exist on Windows
-if(EXISTS "/etc/os-release")
-  file(STRINGS /etc/os-release DISTRO REGEX "^NAME=")
-  string(REGEX REPLACE "NAME=\"(.*)\"" "\\1" DISTRO "${DISTRO}")
-  message(STATUS "Distro Name: ${DISTRO}")
-  if(DISTRO MATCHES "CentOS.*")
+if(LINUX)
+  file(STRINGS "/etc/os-release" DISTRO_ID_LIKE REGEX "ID_LIKE")
+  if(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
     set (LIB_DIR "lib64")
-  endif()
-endif()
+  endif(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
+endif(LINUX)
 
 # Need to use ExternalProject for our builds so that we can get the
 # correct dependencies between our components and the ExternalProject
