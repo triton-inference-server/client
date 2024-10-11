@@ -25,7 +25,7 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 grpcio>=1.63.0
-protobuf>=5.26.1,<6.0dev
 numpy>=1.19.1,<2
 packaging>=14.1
+protobuf>=5.26.1,<6.0dev
 python-rapidjson>=0.9.1
