@@ -90,7 +90,7 @@ def _raise_error(msg):
     raise ex
 
 
-def create_shared_memory_region(triton_shm_name, shm_key, byte_size):
+def create_shared_memory_region(triton_shm_name, shm_key, byte_size, create=True):
     """Creates a system shared memory region with the specified name and size.
 
     Parameters
@@ -113,6 +113,11 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size):
         If unable to create the shared memory region.
     """
 
+    if create and shm_key in mapped_shm_regions:
+        raise SharedMemoryException(
+            "unable to create the shared memory region, already exists"
+        )
+
     shm_handle = c_void_p()
     _raise_if_error(
         c_int(
@@ -121,7 +126,9 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size):
             )
         )
     )
-    mapped_shm_regions.append(shm_key)
+
+    if create:
+        mapped_shm_regions.append(shm_key)
 
     return shm_handle
 
@@ -271,7 +278,7 @@ def mapped_shared_memory_regions():
     return mapped_shm_regions
 
 
-def destroy_shared_memory_region(shm_handle):
+def destroy_shared_memory_region(shm_handle, raise_unlink_exception=False):
     """Unlink a system shared memory region with the specified handle.
 
     Parameters
@@ -306,8 +313,20 @@ def destroy_shared_memory_region(shm_handle):
     # fail, a re-attempt could result in a segfault. Secondarily, if we
     # fail to delete a region, we should not report it back to the user
     # as a valid memory region.
-    mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
-    _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
+    try:
+        mapped_shm_regions.remove(shm_key.value.decode("utf-8"))
+    except ValueError:
+        # okay if mapped_shm_regions doesn't have the key as there can be
+        # destroy call on handles with the same shared memory key
+        pass
+    try:
+        _raise_if_error(c_int(_cshm_shared_memory_region_destroy(shm_handle)))
+    except SharedMemoryException as ex:
+        # Suppress unlink exception except when explicitly allow to raise
+        if not raise_unlink_exception and "unlink" in str(ex):
+            pass
+        else:
+            raise ex
     return
 
 
@@ -328,6 +347,7 @@ class SharedMemoryException(Exception):
             -4: "unable to read/mmap the shared memory region",
             -5: "unable to unlink the shared memory region",
             -6: "unable to munmap the shared memory region",
+            -7: "unable to set the shared memory region",
         }
         self._msg = None
         if type(err) == str:

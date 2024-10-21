@@ -108,10 +108,11 @@ int
 SharedMemoryRegionSet(
     void* shm_handle, size_t offset, size_t byte_size, const void* data)
 {
-  void* shm_addr =
-      reinterpret_cast<SharedMemoryHandle*>(shm_handle)->base_addr_;
-  char* shm_addr_offset = reinterpret_cast<char*>(shm_addr);
-  std::memcpy(shm_addr_offset + offset, data, byte_size);
+  auto shm = reinterpret_cast<SharedMemoryHandle*>(shm_handle);
+  if (shm->byte_size_ < (offset + byte_size)) {
+    return -7;
+  }
+  std::memcpy(shm->base_addr_ + offset, data, byte_size);
   return 0;
 }
 
