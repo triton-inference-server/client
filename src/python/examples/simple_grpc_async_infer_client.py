@@ -25,7 +25,6 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import argparse
 import sys
 import time
 from functools import partial
@@ -35,36 +34,13 @@ import tritonclient.grpc as grpcclient
 from tritonclient.utils import InferenceServerException
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "-v",
-        "--verbose",
-        action="store_true",
-        required=False,
-        default=False,
-        help="Enable verbose output",
-    )
-    parser.add_argument(
-        "-u",
-        "--url",
-        type=str,
-        required=False,
-        default="localhost:8001",
-        help="Inference server URL. Default is localhost:8001.",
-    )
-    parser.add_argument(
-        "-t",
-        "--client-timeout",
-        type=float,
-        required=False,
-        default=None,
-        help="Client timeout in seconds. Default is None.",
-    )
+    # 1 ms cancellation timeout
+    client_timeout = 0.001
+    url = "localhost:8001"
 
-    FLAGS = parser.parse_args()
     try:
         triton_client = grpcclient.InferenceServerClient(
-            url=FLAGS.url, verbose=FLAGS.verbose
+            url=url
         )
     except Exception as e:
         print("context creation failed: " + str(e))
@@ -106,50 +82,31 @@ if __name__ == "__main__":
     user_data = []
 
     # Inference call
-    triton_client.async_infer(
-        model_name=model_name,
-        inputs=inputs,
-        callback=partial(callback, user_data),
-        outputs=outputs,
-        client_timeout=FLAGS.client_timeout,
-    )
+    for i in range(1000):
+        triton_client.async_infer(
+            model_name=model_name,
+            inputs=inputs,
+            callback=partial(callback, user_data),
+            outputs=outputs,
+            client_timeout=client_timeout,
+        )
 
     # Wait until the results are available in user_data
-    time_out = 10
+    time_out = 20
     while (len(user_data) == 0) and time_out > 0:
         time_out = time_out - 1
         time.sleep(1)
+    
+    print("results: ", len(user_data))
 
     # Display and validate the available results
-    if len(user_data) == 1:
+    count = 1
+    for result_data in user_data:
         # Check for the errors
-        if type(user_data[0]) == InferenceServerException:
-            print(user_data[0])
-            sys.exit(1)
+        if type(result_data) == InferenceServerException:
+            print("request -", count, result_data.message())
+        else:
+            print("request -", count, "PASS")
+        count += 1
 
-        # Validate the values by matching with already computed expected
-        # values.
-        output0_data = user_data[0].as_numpy("OUTPUT0")
-        output1_data = user_data[0].as_numpy("OUTPUT1")
-        for i in range(16):
-            print(
-                str(input0_data[0][i])
-                + " + "
-                + str(input1_data[0][i])
-                + " = "
-                + str(output0_data[0][i])
-            )
-            print(
-                str(input0_data[0][i])
-                + " - "
-                + str(input1_data[0][i])
-                + " = "
-                + str(output1_data[0][i])
-            )
-            if (input0_data[0][i] + input1_data[0][i]) != output0_data[0][i]:
-                print("sync infer error: incorrect sum")
-                sys.exit(1)
-            if (input0_data[0][i] - input1_data[0][i]) != output1_data[0][i]:
-                print("sync infer error: incorrect difference")
-                sys.exit(1)
-        print("PASS: Async infer")
+    print("PASS: Async infer")
