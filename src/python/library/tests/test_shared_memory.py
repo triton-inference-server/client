@@ -41,14 +41,7 @@ class SharedMemoryTest(unittest.TestCase):
 
     def tearDown(self):
         for shm_handle in self.shm_handles:
-            # [NOTE] wrapper for old implementation that will fail
-            try:
-                shm.destroy_shared_memory_region(shm_handle)
-            except shm.SharedMemoryException as ex:
-                if "unlink" in str(ex):
-                    pass
-                else:
-                    raise ex
+            shm.destroy_shared_memory_region(shm_handle)
 
     def test_lifecycle(self):
         cpu_tensor = numpy.ones([4, 4], dtype=numpy.float32)
@@ -69,6 +62,15 @@ class SharedMemoryTest(unittest.TestCase):
 
         shm.destroy_shared_memory_region(self.shm_handles.pop(0))
 
+    def test_invalid_create_shm(self):
+        # Raises error since tried to create invalid system shared memory region
+        try:
+            self.shm_handles.append(
+                shm.create_shared_memory_region("dummy_data", "/dummy_data", -1)
+            )
+        except Exception as ex:
+            self.assertTrue(str(ex) == "unable to initialize the size")
+
     def test_set_region_offset(self):
         large_tensor = numpy.ones([4, 4], dtype=numpy.float32)
         large_size = 64
@@ -87,7 +89,6 @@ class SharedMemoryTest(unittest.TestCase):
 
         self.assertTrue(numpy.allclose(small_tensor, shm_tensor))
 
-    # [NOTE] current impl will fail
     def test_set_region_oversize(self):
         large_tensor = numpy.ones([4, 4], dtype=numpy.float32)
         small_size = 32
@@ -101,55 +102,51 @@ class SharedMemoryTest(unittest.TestCase):
         # [NOTE] change in behavior:
         # previous: okay to create shared memory region of the same key with different size
         #           and the behavior is not being study clearly.
-        # now: only allow create by default, flag may be set to return the same handle if
-        #      existed, warning will be print if size is different
+        # now: return the same handle if existed, warning will be print if size is different
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", 32)
         )
         with self.assertRaises(shm.SharedMemoryException):
             self.shm_handles.append(
-                shm.create_shared_memory_region("shm_name", "shm_key", 32)
+                shm.create_shared_memory_region(
+                    "shm_name", "shm_key", 32, create_only=True
+                )
             )
 
         # Get handle to the same shared memory region but with larger size requested,
         # check if actual size is checked
         self.shm_handles.append(
-            shm.create_shared_memory_region("shm_name", "shm_key", 64, create=False)
+            shm.create_shared_memory_region("shm_name", "shm_key", 64)
         )
 
         self.assertEqual(len(shm.mapped_shared_memory_regions()), 1)
 
         large_tensor = numpy.ones([4, 4], dtype=numpy.float32)
-        small_size = 32
-        # [NOTE] current impl will fail
         with self.assertRaises(shm.SharedMemoryException):
             shm.set_shared_memory_region(self.shm_handles[-1], [large_tensor])
 
-    # [NOTE] current impl will fail
     def test_destroy_duplicate(self):
         # [NOTE] change in behavior:
         # previous: raise exception if underlying shared memory has been unlinked
-        # now: the exception will be suppressed to align with Windows behavior, unless
-        #      explicitly toggled
+        # now: no exception as unlink only happen when last managed handle is destroyed
+        self.assertEqual(len(shm.mapped_shared_memory_regions()), 0)
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", 64)
         )
         self.shm_handles.append(
-            shm.create_shared_memory_region("shm_name", "shm_key", 32, create=False)
+            shm.create_shared_memory_region("shm_name", "shm_key", 32)
         )
         self.shm_handles.append(
-            shm.create_shared_memory_region("shm_name", "shm_key", 32, create=False)
+            shm.create_shared_memory_region("shm_name", "shm_key", 32)
         )
         self.assertEqual(len(shm.mapped_shared_memory_regions()), 1)
 
         shm.destroy_shared_memory_region(self.shm_handles.pop(0))
-        self.assertEqual(len(shm.mapped_shared_memory_regions()), 0)
+        shm.destroy_shared_memory_region(self.shm_handles.pop(0))
+        self.assertEqual(len(shm.mapped_shared_memory_regions()), 1)
 
         shm.destroy_shared_memory_region(self.shm_handles.pop(0))
-        with self.assertRaises(shm.SharedMemoryException):
-            shm.destroy_shared_memory_region(
-                self.shm_handles.pop(0), raise_unlink_exception=True
-            )
+        self.assertEqual(len(shm.mapped_shared_memory_regions()), 0)
 
     def test_numpy_bytes(self):
         int_tensor = numpy.arange(start=0, stop=16, dtype=numpy.int32)
