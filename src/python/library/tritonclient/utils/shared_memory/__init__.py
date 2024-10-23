@@ -104,7 +104,7 @@ class SharedMemoryRegion:
 
 
 def create_shared_memory_region(triton_shm_name, shm_key, byte_size, create_only=False):
-    """Creates a system shared memory region with the specified name and size.
+    """Return a handle of the system shared memory region with the specified name and size.
 
     Parameters
     ----------
@@ -323,7 +323,8 @@ def mapped_shared_memory_regions():
 
 
 def destroy_shared_memory_region(shm_handle):
-    """Unlink a system shared memory region with the specified handle.
+    """Release the handle, unlink a system shared memory region with the specified handle
+    if it is the last managed handle.
 
     Parameters
     ----------

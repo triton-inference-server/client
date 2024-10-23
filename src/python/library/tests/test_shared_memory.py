@@ -64,12 +64,12 @@ class SharedMemoryTest(unittest.TestCase):
 
     def test_invalid_create_shm(self):
         # Raises error since tried to create invalid system shared memory region
-        try:
+        with self.assertRaisesRegex(
+            shm.SharedMemoryException, "unable to initialize the size"
+        ):
             self.shm_handles.append(
                 shm.create_shared_memory_region("dummy_data", "/dummy_data", -1)
             )
-        except Exception as ex:
-            self.assertTrue(str(ex) == "unable to initialize the size")
 
     def test_set_region_offset(self):
         large_tensor = numpy.ones([4, 4], dtype=numpy.float32)
@@ -95,7 +95,9 @@ class SharedMemoryTest(unittest.TestCase):
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", small_size)
         )
-        with self.assertRaises(shm.SharedMemoryException):
+        with self.assertRaisesRegex(
+            shm.SharedMemoryException, "unable to set the shared memory region"
+        ):
             shm.set_shared_memory_region(self.shm_handles[0], [large_tensor])
 
     def test_duplicate_key(self):
@@ -106,7 +108,10 @@ class SharedMemoryTest(unittest.TestCase):
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", 32)
         )
-        with self.assertRaises(shm.SharedMemoryException):
+        with self.assertRaisesRegex(
+            shm.SharedMemoryException,
+            "unable to create the shared memory region, already exists",
+        ):
             self.shm_handles.append(
                 shm.create_shared_memory_region(
                     "shm_name", "shm_key", 32, create_only=True
@@ -122,7 +127,9 @@ class SharedMemoryTest(unittest.TestCase):
         self.assertEqual(len(shm.mapped_shared_memory_regions()), 1)
 
         large_tensor = numpy.ones([4, 4], dtype=numpy.float32)
-        with self.assertRaises(shm.SharedMemoryException):
+        with self.assertRaisesRegex(
+            shm.SharedMemoryException, "unable to set the shared memory region"
+        ):
             shm.set_shared_memory_region(self.shm_handles[-1], [large_tensor])
 
     def test_destroy_duplicate(self):
