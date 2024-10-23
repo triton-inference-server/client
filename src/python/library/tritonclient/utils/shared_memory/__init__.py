@@ -146,13 +146,13 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size, create_only
         region_offset = c_uint64()
         shm_byte_size = c_uint64()
         shm_addr = c_char_p()
-        shm_key = c_char_p()
+        c_shm_key = c_char_p()
         _raise_if_error(
             c_int(
                 _cshm_get_shared_memory_handle_info(
                     shm_handle._c_handle,
                     byref(shm_addr),
-                    byref(shm_key),
+                    byref(c_shm_key),
                     byref(shm_fd),
                     byref(region_offset),
                     byref(shm_byte_size),
