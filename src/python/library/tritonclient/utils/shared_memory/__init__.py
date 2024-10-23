@@ -83,6 +83,8 @@ def create_shared_memory_region(triton_shm_name, shm_key, byte_size, create_only
                 _key_mapping[shm_key] = [False, 0]
             _key_mapping[shm_key][1] += 1
         except FileNotFoundError:
+            # File not found means the shared memory region has not been created,
+            # suppress the exception and attempt to create the region.
             pass
     if shm_handle._mpsm_handle is None:
         try:
@@ -137,6 +139,8 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
 
     try:
         for input_value in input_values:
+            # numpy array of object type is "syntactic sugar" for the API, should
+            # be handled by accessing its item and treat as Python object
             if input_value.dtype == np.object_:
                 byte_size = len(input_value.item())
                 shm_handle._mpsm_handle.buf[offset : offset + byte_size] = (
