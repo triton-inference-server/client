@@ -174,10 +174,6 @@ if __name__ == "__main__":
             "tritonclient/utils/shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
         )
-        shutil.copyfile(
-            "tritonclient/utils/libcshm.so",
-            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/libcshm.so"),
-        )
         cpdir(
             "tritonclient/utils/cuda_shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),

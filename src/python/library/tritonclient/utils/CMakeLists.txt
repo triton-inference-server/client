@@ -29,20 +29,6 @@ configure_file(_dlpack.py _dlpack.py COPYONLY)
 configure_file(_shared_memory_tensor.py _shared_memory_tensor.py COPYONLY)
 
 if(NOT WIN32)
-  file(COPY shared_memory DESTINATION .)
-
-  #
-  # libcshm.so
-  #
-  add_library(cshm SHARED shared_memory/shared_memory.cc)
-  if(${TRITON_ENABLE_GPU})
-    target_compile_definitions(cshm PUBLIC TRITON_ENABLE_GPU=1)
-    target_link_libraries(cshm PUBLIC CUDA::cudart)
-  endif() # TRITON_ENABLE_GPU
-  target_link_libraries(cshm PRIVATE rt)
-endif() # WIN32
-
-if(NOT WIN32)
   configure_file(shared_memory/__init__.py shared_memory/__init__.py COPYONLY)
   configure_file(cuda_shared_memory/__init__.py cuda_shared_memory/__init__.py COPYONLY)
   configure_file(cuda_shared_memory/_utils.py cuda_shared_memory/_utils.py COPYONLY)

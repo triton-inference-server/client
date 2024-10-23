@@ -65,7 +65,7 @@ class SharedMemoryTest(unittest.TestCase):
     def test_invalid_create_shm(self):
         # Raises error since tried to create invalid system shared memory region
         with self.assertRaisesRegex(
-            shm.SharedMemoryException, "unable to initialize the size"
+            shm.SharedMemoryException, "unable to create the shared memory region"
         ):
             self.shm_handles.append(
                 shm.create_shared_memory_region("dummy_data", "/dummy_data", -1)
@@ -110,7 +110,7 @@ class SharedMemoryTest(unittest.TestCase):
         )
         with self.assertRaisesRegex(
             shm.SharedMemoryException,
-            "unable to create the shared memory region, already exists",
+            "unable to create the shared memory region",
         ):
             self.shm_handles.append(
                 shm.create_shared_memory_region(
