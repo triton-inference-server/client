@@ -96,7 +96,6 @@ add_custom_target(
 if (NOT WIN32)
   # Can generate linux specific wheel file on linux systems only.
   set(LINUX_WHEEL_DEPENDS
-        cshm
         ${WHEEL_DEPENDS}
   )
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -173,10 +173,6 @@ if __name__ == "__main__":
         cpdir(
             "tritonclient/utils/shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
-        )
-        shutil.copyfile(
-            "tritonclient/utils/libcshm.so",
-            os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory/libcshm.so"),
         )
         cpdir(
             "tritonclient/utils/cuda_shared_memory",
