@@ -291,10 +291,8 @@ if(TRITON_ENABLE_CC_GRPC)
     endif() # TRITON_ENABLE_GPU
 
     if(TRITON_ENABLE_GPU)
-      target_link_libraries(
-        ${_client_target}
-        PUBLIC CUDA::cudart
-      )
+      target_include_directories(${_client_target}
+                                 PUBLIC ${CUDAToolkit_INCLUDE_DIRS})
     endif() # TRITON_ENABLE_GPU
   endforeach()
 
@@ -477,10 +475,8 @@ if(TRITON_ENABLE_CC_HTTP)
     endif() # TRITON_ENABLE_GPU
 
     if(TRITON_ENABLE_GPU)
-      target_link_libraries(
-        ${_client_target}
-        PUBLIC CUDA::cudart
-      )
+      target_include_directories(${_client_target}
+                                 PUBLIC ${CUDAToolkit_INCLUDE_DIRS})
     endif() # TRITON_ENABLE_GPU
 
     if(${TRITON_ENABLE_ZLIB})
