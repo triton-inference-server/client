@@ -1,4 +1,4 @@
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -271,7 +271,7 @@ if(TRITON_ENABLE_CC_GRPC)
       simple_grpc_cudashm_client
       PRIVATE
         grpcclient_static
-        ${CUDA_LIBRARIES}
+        CUDA::cudart
     )
     install(
       TARGETS simple_grpc_cudashm_client
@@ -409,7 +409,7 @@ if(TRITON_ENABLE_CC_HTTP)
       simple_http_cudashm_client
       PRIVATE
         httpclient_static
-        ${CUDA_LIBRARIES}
+        CUDA::cudart
     )
     install(
       TARGETS simple_http_cudashm_client
