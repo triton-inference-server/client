@@ -101,10 +101,8 @@ class SharedMemoryTest(unittest.TestCase):
             shm.set_shared_memory_region(self.shm_handles[0], [large_tensor])
 
     def test_duplicate_key(self):
-        # [NOTE] change in behavior:
-        # previous: okay to create shared memory region of the same key with different size
-        #           and the behavior is not being study clearly.
-        # now: return the same handle if existed, warning will be print if size is different
+        # by default, return the same handle if existed, warning will be print
+        # if size is different
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", 32)
         )
@@ -133,9 +131,8 @@ class SharedMemoryTest(unittest.TestCase):
             shm.set_shared_memory_region(self.shm_handles[-1], [large_tensor])
 
     def test_destroy_duplicate(self):
-        # [NOTE] change in behavior:
-        # previous: raise exception if underlying shared memory has been unlinked
-        # now: no exception as unlink only happen when last managed handle is destroyed
+        # destruction of duplicate shared memory region will occur when the last
+        # managed handle is destroyed
         self.assertEqual(len(shm.mapped_shared_memory_regions()), 0)
         self.shm_handles.append(
             shm.create_shared_memory_region("shm_name", "shm_key", 64)
