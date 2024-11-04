@@ -121,7 +121,7 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0 ]; then
         echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | \
         tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
         apt-get update && \
-        apt-get install -y --no-install-recommends cmake=3.28.* cmake-data=3.28.* rapidjson-dev
+        apt-get install -y --no-install-recommends cmake=3.28.3* cmake-data=3.28.3* rapidjson-dev
 fi
 
 # Install jdk and maven
