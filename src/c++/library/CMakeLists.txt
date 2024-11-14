@@ -300,12 +300,12 @@ if(TRITON_ENABLE_CC_GRPC)
     if (NOT WIN32)
       install(
         DIRECTORY
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/lib/
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/lib/
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/lib/
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/lib/
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/absl/lib/
-          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/re2/lib/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/curl/${LIB_DIR}/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/grpc/${LIB_DIR}/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/protobuf/${LIB_DIR}/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/c-ares/${LIB_DIR}/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/absl/${LIB_DIR}/
+          ${CMAKE_CURRENT_BINARY_DIR}/../../third-party/re2/${LIB_DIR}/
         DESTINATION ${CMAKE_INSTALL_LIBDIR}
         FILES_MATCHING
           PATTERN "*\.a"
