@@ -128,6 +128,8 @@ fi
 mkdir -p ${BUILD_HOME}
 cd ${BUILD_HOME}
 apt update && apt install -y openjdk-11-jdk
+# Set OpenJDK to 11 explicitly. OpenJDK version 12 on Ubuntu 24.04 by default.
+export JAVA_HOME="/usr/lib/jvm/java-11-openjdk-amd64"
 wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
 export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/
