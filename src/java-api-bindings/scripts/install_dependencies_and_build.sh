@@ -127,6 +127,7 @@ fi
 # Install jdk and maven
 mkdir -p ${BUILD_HOME}
 cd ${BUILD_HOME}
+apt remove maven -y && apt autoremove -y
 apt update && apt install -y openjdk-11-jdk
 wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
