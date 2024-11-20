@@ -38,6 +38,8 @@ import gzip
 import zlib
 from urllib.parse import quote
 
+import gzip
+import zlib
 import rapidjson as json
 
 # In case user try to import dependency from here
