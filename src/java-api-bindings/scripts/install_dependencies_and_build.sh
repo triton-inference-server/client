@@ -121,13 +121,13 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0 ]; then
         echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | \
         tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
         apt-get update && \
-        apt-get install -y --no-install-recommends cmake=3.27.7* cmake-data=3.27.7* rapidjson-dev
+        apt-get install -y --no-install-recommends cmake=3.28.3* cmake-data=3.28.3* rapidjson-dev
 fi
 
 # Install jdk and maven
 mkdir -p ${BUILD_HOME}
 cd ${BUILD_HOME}
-apt update && apt install -y openjdk-11-jdk
+apt update && apt remove maven -y && apt autoremove -y &&  apt install -y openjdk-11-jdk
 wget https://archive.apache.org/dist/maven/maven-3/${MAVEN_VERSION}/binaries/apache-maven-${MAVEN_VERSION}-bin.tar.gz
 tar zxvf apache-maven-${MAVEN_VERSION}-bin.tar.gz
 export PATH=$PATH:$PWD/apache-maven-${MAVEN_VERSION}/bin/

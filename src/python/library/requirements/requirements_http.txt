@@ -25,6 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 aiohttp>=3.8.1,<4.0.0
-geventhttpclient>=1.4.4,<=2.0.2
+geventhttpclient>=2.3.3
 numpy>=1.19.1,<2
 python-rapidjson>=0.9.1
