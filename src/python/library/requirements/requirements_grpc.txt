@@ -24,11 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-# There is memory leak in later Python GRPC (1.43.0 to be specific),
-# use known working version until the memory leak is resolved in the future
-# (see https://github.com/grpc/grpc/issues/28513)
-grpcio>=1.41.0
+grpcio>=1.63.0,<1.68
 numpy>=1.19.1,<2
 packaging>=14.1
-protobuf>=3.5.0,<5
+protobuf>=5.26.1,<6.0dev
 python-rapidjson>=0.9.1

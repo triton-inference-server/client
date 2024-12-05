@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2021, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2024, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -96,11 +96,10 @@ add_custom_target(
 if (NOT WIN32)
   # Can generate linux specific wheel file on linux systems only.
   set(LINUX_WHEEL_DEPENDS
-        cshm
         ${WHEEL_DEPENDS}
   )
 
-  if (${TRITON_ENABLE_PERF_ANALYZER})
+  if (${TRITON_PACKAGE_PERF_ANALYZER})
     set(perf_analyzer_arg --perf-analyzer ${CMAKE_INSTALL_PREFIX}/bin/perf_analyzer)
   endif()
   set(linux_wheel_stamp_file "linux_stamp.whl")

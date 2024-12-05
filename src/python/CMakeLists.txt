@@ -1,4 +1,4 @@
-# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -34,10 +34,11 @@ project(python-clients LANGUAGES C CXX)
 set(TRITON_VERSION "0.0.0" CACHE STRING "Version for the clients")
 option(TRITON_ENABLE_PYTHON_HTTP "Enable Python HTTP client libraries" OFF)
 option(TRITON_ENABLE_PYTHON_GRPC "Enable Python GRPC client libraries" OFF)
-option(TRITON_ENABLE_PERF_ANALYZER "Enable Performance Analyzer" OFF)
 option(TRITON_ENABLE_EXAMPLES "Include examples in build" OFF)
 option(TRITON_ENABLE_TESTS "Include tests in build" OFF)
 option(TRITON_ENABLE_GPU "Enable GPU support in libraries" OFF)
+# Package Perf Analyzer with the Python Client -- Intended to be used by PA repo
+option(TRITON_PACKAGE_PERF_ANALYZER "Include Perf Analyzer in pip wheel" OFF)
 
 set(TRITON_COMMON_REPO_TAG "main" CACHE STRING "Tag for triton-inference-server/common repo")
 

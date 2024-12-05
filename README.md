@@ -146,24 +146,9 @@ The components of the install packages are:
 * grpc [ `service_pb2`, `service_pb2_grpc`, `model_config_pb2` ]
 * utils [ linux distribution will include `shared_memory` and `cuda_shared_memory`]
 
-The Linux version of the package also includes the
-[perf_analyzer](src/c++/perf_analyzer/README.md)
-binary. The perf_analyzer binary is built on Ubuntu 20.04 and may not
-run on other Linux distributions. To run the perf_analyzer the
-following dependency must be installed:
-
-```bash
-$ sudo apt update
-$ sudo apt install libb64-dev
-```
-
-To reiterate, the installation on windows will not include perf_analyzer
-nor shared_memory/cuda_shared_memory components.
-
 ### Download From GitHub
 
-The client libraries and the perf_analyzer executable can be
-downloaded from the [Triton GitHub release
+The client libraries can be downloaded from the [Triton GitHub release
 page](https://github.com/triton-inference-server/server/releases)
 corresponding to the release you are interested in. The client
 libraries are found in the "Assets" section of the release page in a
@@ -185,15 +170,6 @@ After installing, the libraries can be found in lib/, the headers in
 include/, the Python wheel files in python/, and the jar files in
 java/.  The bin/ and python/ directories contain the built examples
 that you can learn more about below.
-
-The perf_analyzer binary is built on Ubuntu 20.04 and may not run on
-other Linux distributions. To use the C++ libraries or perf_analyzer
-executable you must install some dependencies.
-
-```bash
-$ apt-get update
-$ apt-get install curl libcurl4-openssl-dev libb64-dev
-```
 
 ### Download Docker Image From NGC
 
@@ -254,17 +230,6 @@ because Triton on Windows does not yet support all the build options.
 
 Use *cmake* to configure the build. You should adjust the flags depending on
 the components of Triton Client you are working and would like to build.
-For example, if you want to build Perf Analyzer with Triton C API, you can use \
-`-DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PERF_ANALYZER_C_API=ON`. You can
-also use `TRITON_ENABLE_PERF_ANALYZER_TFS` and `TRITON_ENABLE_PERF_ANALYZER_TS` flags
-to enable/disable support for TensorFlow Serving and TorchServe backend respectively in perf analyzer. \
-The following command demonstrate how to build client with all the features:
-
-```
-$ mkdir build
-$ cd build
-$ cmake -DCMAKE_INSTALL_PREFIX=`pwd`/install -DTRITON_ENABLE_CC_HTTP=ON -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PERF_ANALYZER=ON -DTRITON_ENABLE_PERF_ANALYZER_C_API=ON -DTRITON_ENABLE_PERF_ANALYZER_TFS=ON -DTRITON_ENABLE_PERF_ANALYZER_TS=ON -DTRITON_ENABLE_PYTHON_HTTP=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_JAVA_HTTP=ON -DTRITON_ENABLE_GPU=ON -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
-```
 
 If you are building on a release branch (or on a development branch
 that is based off of a release branch), then you must also use
@@ -585,7 +550,28 @@ server side.
 If writing your own gRPC clients in the language of choice consult
 gRPC guide on [cancellation](https://grpc.io/docs/guides/cancellation/#cancelling-an-rpc-call-on-the-client-side).
 
+### GRPC Status Codes
 
+Starting from release 24.08, Triton server introduces support for gRPC error
+codes in streaming mode for all clients enhancing error reporting capabilities. When
+this feature is enabled, the Triton server will return standard gRPC error codes
+and subsequently close the stream after delivering the error. This feature is
+optional can be enabled by adding header with `triton_grpc_error` key and `true` as
+value. See [grpc error
+codes](https://github.com/triton-inference-server/server/tree/main#GRPC-Status-Codes) in the server to learn about how this is handled on the server side. See gRPC
+guide on [status-codes](https://grpc.io/docs/guides/status-codes/) for more details.
+Below is a Python snippet to enable the feature. Without this header Triton server
+will continue streaming in default mode returning error message and status inside
+`InferenceServerException` object within the callback provided.
+
+```python
+  triton_client = grpcclient.InferenceServerClient(triton_server_url)
+  # New added header key value
+  metadata = {"triton_grpc_error": "true"}
+  triton_client.start_stream(
+    callback=partial(callback, user_data), headers=metadata
+  )
+```
 ## Simple Example Applications
 
 This section describes several of the simple example applications and
