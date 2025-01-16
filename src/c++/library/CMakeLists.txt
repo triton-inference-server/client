@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -364,7 +364,7 @@ if(TRITON_ENABLE_CC_HTTP)
   # libhttpclient object build
   set(
       REQUEST_SRCS
-      http_client.cc common.cc cencode.c
+      http_client.cc common.cc cencode.cc
   )
 
   set(
@@ -379,7 +379,7 @@ if(TRITON_ENABLE_CC_HTTP)
 
   if (NOT WIN32)
     set_property(
-      SOURCE cencode.c
+      SOURCE cencode.cc
       PROPERTY COMPILE_FLAGS -Wno-implicit-fallthrough
     )
   endif() # NOT WIN32
