@@ -7,6 +7,8 @@ For details, see http://sourceforge.net/projects/libb64
 
 #include "cencode.h"
 
+namespace triton::client::libb64 {
+
 const int CHARS_PER_LINE = 72;
 
 void
@@ -107,3 +109,5 @@ base64_encode_blockend(char* code_out, base64_encodestate* state_in)
 
   return codechar - code_out;
 }
+
+}  // namespace triton::client::libb64
