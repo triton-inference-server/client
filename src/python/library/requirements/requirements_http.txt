@@ -26,5 +26,5 @@
 
 aiohttp>=3.8.1,<4.0.0
 geventhttpclient>=2.3.3
-numpy>=1.19.1,<2
+numpy>=1.19.1
 python-rapidjson>=0.9.1
