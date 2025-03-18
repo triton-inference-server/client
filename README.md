@@ -351,7 +351,7 @@ The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/pyt
 
 #### ORCA Header Metrics
 
-In an effort to allow quick, on-demand metric retrieval for external load balancers such as the [Kubernetes Inference Gateway API](https://gateway-api-inference-extension.sigs.k8s.io/), Triton can include live KV-cache utilization and capacity metrics in the HTTP response header when processing inference requests. The motivation behind this method was to simplify the pipeline of metric scraping by not requiring seperate service to hit the metrics endpoint, instead simply including a request header asking for metrics of a certain format in the response.
+In an effort to allow quick, on-demand metric retrieval for external load balancers such as the [Kubernetes Inference Gateway API](https://gateway-api-inference-extension.sigs.k8s.io/), Triton can include live KV-cache utilization and capacity metrics in the HTTP response header when processing inference requests. The motivation behind this method was to simplify the pipeline of metric scraping by not requiring separate service to hit the metrics endpoint, instead simply including a request header asking for metrics of a certain format in the response.
 
 To use ORCA header metrics, Triton must be using the [TensorRT-LLM backend](https://github.com/triton-inference-server/tensorrtllm_backend) that exposes KV-cache metrics, and the HTTP inference request must include a header named `endpoint-load-metrics-format` with a value equal to one of the valid formats:
 
