@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     FLAGS = parser.parse_args()
 
-    model_name = "inception_graphdef"
+    model_name = "densenet_onnx"
     model_version = ""
     batch_size = 1
 
