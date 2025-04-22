@@ -349,6 +349,22 @@ Similarly, for Python client, see `request_compression_algorithm` and `response_
 
 The [C++](src/c%2B%2B/examples/simple_http_infer_client.cc) and [Python](src/python/examples/simple_http_infer_client.py) examples demonstrates how to use compression options.
 
+#### ORCA Header Metrics
+
+In an effort to allow quick, on-demand metric retrieval for external load balancers such as the [Kubernetes Inference Gateway API](https://gateway-api-inference-extension.sigs.k8s.io/), Triton can include live KV-cache utilization and capacity metrics in the HTTP response header when processing inference requests. The motivation behind this method was to simplify the pipeline of metric scraping by not requiring separate service to hit the metrics endpoint, instead simply including a request header asking for metrics of a certain format in the response.
+
+To use ORCA header metrics, Triton must be using the [TensorRT-LLM backend](https://github.com/triton-inference-server/tensorrtllm_backend) that exposes KV-cache metrics, and the HTTP inference request must include a header named `endpoint-load-metrics-format` with a value equal to one of the valid formats:
+
+`text`
+- Native HTTP, comma sepatared key-value pairs with the map fields elided into the top level scope by prepending the ‘<map_name>’
+- Request header: `endpoint-load-metrics-format: text`
+- Ex. Response header: `endpoint-load-metrics: TEXT cpu_utilization=0.3, mem_utilization=0.8, rps_fractional=10.0, eps=1, named_metrics.custom_metric_util=0.4`
+
+`json`
+- JSON encoding of the metrics.
+- Request header: `endpoint-load-metrics-format: json`
+- Ex.  Response header:  `endpoint-load-metrics: JSON {“cpu_utilization”: 0.3, “mem_utilization”: 0.8, “rps_fractional”: 10.0, “eps”: 1, “named_metrics”: {“custom-metric-util”: 0.4}}`
+
 #### Python AsyncIO Support (Beta)
 
 *This feature is currently in beta and may be subject to change.*

@@ -53,7 +53,7 @@ if __name__ == "__main__":
 
     FLAGS = parser.parse_args()
 
-    model_name = "inception_graphdef"
+    model_name = "densenet_onnx"
     model_version = ""
     batch_size = 1
 
@@ -98,16 +98,16 @@ if __name__ == "__main__":
     request.id = "my request id"
 
     input = service_pb2.ModelInferRequest().InferInputTensor()
-    input.name = "input"
+    input.name = "data_0"
     input.datatype = "FP32"
-    input.shape.extend([1, 299, 299, 3])
+    input.shape.extend([3, 224, 224])
     request.inputs.extend([input])
 
     output = service_pb2.ModelInferRequest().InferRequestedOutputTensor()
-    output.name = "InceptionV3/Predictions/Softmax"
+    output.name = "fc6_1"
     request.outputs.extend([output])
 
-    request.raw_input_contents.extend([bytes(1072812 * "a", "utf-8")])
+    request.raw_input_contents.extend([bytes(602112 * "a", "utf-8")])
 
     response = grpc_stub.ModelInfer(request)
     print("model infer:\n{}".format(response))
