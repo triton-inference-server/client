@@ -588,6 +588,17 @@ will continue streaming in default mode returning error message and status insid
     callback=partial(callback, user_data), headers=metadata
   )
 ```
+
+#### GRPC Status Codes During Server Shutdown
+
+During shutdown, Triton will reject new incoming requests and clients may receive one of the following status codes before the endpoint closes:
+
+1. `StatusCode.CANCELLED`
+   - Returned by the GRPC endpoint indicating the endpoint has started to shutdown and cannot accept new requests.
+
+2. `StatusCode.UNAVAILABLE` with the message "GRPC server is shutting down and has stopped accepting new requests"
+  - Returned by the Tritonserver indicating requests can no longer be added to the processing queue.
+
 ## Simple Example Applications
 
 This section describes several of the simple example applications and
