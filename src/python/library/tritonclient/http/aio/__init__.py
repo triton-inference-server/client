@@ -38,7 +38,6 @@ import gzip
 import zlib
 from urllib.parse import quote
 
-import aiohttp.typedefs
 import rapidjson as json
 
 # In case user try to import dependency from here
