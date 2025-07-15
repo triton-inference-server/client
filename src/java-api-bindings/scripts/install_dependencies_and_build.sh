@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright (c) 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright (c) 2022-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -121,7 +121,7 @@ if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -ne 0 ]; then
         echo "deb [signed-by=/usr/share/keyrings/kitware-archive-keyring.gpg] https://apt.kitware.com/ubuntu/ $UBUNTU_CODENAME main" | \
         tee /etc/apt/sources.list.d/kitware.list >/dev/null && \
         apt-get update && \
-        apt-get install -y --no-install-recommends cmake=3.28.3* cmake-data=3.28.3* rapidjson-dev
+        apt-get install -y --no-install-recommends cmake=4.0.3* cmake-data=4.0.3* rapidjson-dev
 fi
 
 # Install jdk and maven
