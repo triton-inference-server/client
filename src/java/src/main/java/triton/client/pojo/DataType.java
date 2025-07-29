@@ -42,7 +42,6 @@ public enum DataType {
   FP16(2, false),
   FP32(4, false),
   FP64(8, false),
-  STRING(-1, false),
   BYTES(-1, false);
 
   public final int numByte;
