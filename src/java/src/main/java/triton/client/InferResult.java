@@ -319,13 +319,13 @@ public class InferResult {
     }
     
     Preconditions.checkArgument(
-    out.getDatatype() == DataType.STRING,
+    out.getDatatype() == DataType.BYTES,
     "Could not get String from data of type %s on output %s.",
     out.getDatatype(), out.getName());
     if (data[0] instanceof String) {
       return (String) data[0];
     } else if (data[0] instanceof byte[]) {
-      return getOutputAsByte(output);
+      return new String((byte[]) data[0], java.nio.charset.StandardCharsets.UTF_8);
     } else {
       return data[0].toString();
     }
