@@ -307,6 +307,13 @@ public class InferResult {
     return (double[]) getOutputImpl(out, double.class, ByteBuffer::getDouble);
   }
 
+  /**
+   * Get String tensor named as by parameter output. The tensor must be of
+   * DataType.BYTES.
+   *
+   * @param output name of output tensor.
+   * @return null if output not found or the tensor in String.
+   */
   public String getOutputAsString(String output) {
     IOTensor out =  this.response.getOutputByName(output);
     if (out == null) {
