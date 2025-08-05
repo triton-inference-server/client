@@ -33,6 +33,8 @@ import com.google.common.base.Preconditions;
 import java.io.IOException;
 import java.io.InputStream;
 import java.lang.reflect.Array;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.util.ArrayList;
@@ -77,6 +79,17 @@ public class InferResult {
     Preconditions.checkState(
         entity != null, "Get null entity from HTTP response.");
     InputStream stream = entity.getContent();
+    
+    // Check for response compression and decompress if needed
+    Header contentEncodingHeader = resp.getFirstHeader("Content-Encoding");
+    if (contentEncodingHeader != null) {
+      String encoding = contentEncodingHeader.getValue().toLowerCase();
+      if ("gzip".equals(encoding)) {
+        stream = new GZIPInputStream(stream);
+      } else if ("deflate".equals(encoding)) {
+        stream = new InflaterInputStream(stream);
+      }
+    }
 
     int httpCode = resp.getStatusLine().getStatusCode();
     if (httpCode != HttpStatus.SC_OK) {
