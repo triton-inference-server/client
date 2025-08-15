@@ -314,25 +314,27 @@ public class InferResult {
    * @param output name of output tensor.
    * @return null if output not found or the tensor in String.
    */
-  public String getOutputAsString(String output) {
-    IOTensor out =  this.response.getOutputByName(output);
+  public String getOutputAsString(String output)
+  {
+    IOTensor out = this.response.getOutputByName(output);
     if (out == null) {
       return null;
     }
-    
+
     Object[] data = out.getData();
     if (data == null || data.length == 0) {
       return null;
     }
-    
+
     Preconditions.checkArgument(
-    out.getDatatype() == DataType.BYTES,
-    "Could not get String from data of type %s on output %s.",
-    out.getDatatype(), out.getName());
+        out.getDatatype() == DataType.BYTES,
+        "Could not get String from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
     if (data[0] instanceof String) {
       return (String) data[0];
     } else if (data[0] instanceof byte[]) {
-      return new String((byte[]) data[0], java.nio.charset.StandardCharsets.UTF_8);
+      return new String(
+          (byte[]) data[0], java.nio.charset.StandardCharsets.UTF_8);
     } else {
       return data[0].toString();
     }
