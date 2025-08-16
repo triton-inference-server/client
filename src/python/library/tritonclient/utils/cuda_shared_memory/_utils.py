@@ -30,8 +30,7 @@ import cuda.bindings.driver as cuda_driver
 import cuda.bindings.runtime as cudart
 
 
-def call_cuda_function(function, *argv):
-    res = function(*argv)
+def call_cuda_function(res):
     err = res[0]
     if isinstance(err, cudart.cudaError_t):
         if err != cudart.cudaError_t.cudaSuccess:
@@ -92,9 +91,10 @@ class CudaSharedMemoryRegion:
             return
         prev_device = None
         try:
-            prev_device = call_cuda_function(cudart.cudaGetDevice)
-            call_cuda_function(cudart.cudaSetDevice, self._device_id)
-            call_cuda_function(cudart.cudaFree, self._base_addr)
+            cuda_driver.cuInit(self._device_id)
+            prev_device = call_cuda_function(cudart.cudaGetDevice())
+            call_cuda_function(cudart.cudaSetDevice(self._device_id))
+            call_cuda_function(cudart.cudaFree(self._base_addr))
         finally:
             if prev_device is not None:
                 maybe_set_device(prev_device)
@@ -104,9 +104,10 @@ class CudaStream:
     def __init__(self, device_id):
         prev_device = None
         try:
-            prev_device = call_cuda_function(cudart.cudaGetDevice)
-            call_cuda_function(cudart.cudaSetDevice, device_id)
-            self._stream = call_cuda_function(cudart.cudaStreamCreate)
+            cuda_driver.cuInit(device_id)
+            prev_device = call_cuda_function(cudart.cudaGetDevice())
+            call_cuda_function(cudart.cudaSetDevice(device_id))
+            self._stream = call_cuda_function(cudart.cudaStreamCreate())
         finally:
             if prev_device is not None:
                 maybe_set_device(prev_device)
@@ -117,12 +118,13 @@ class CudaStream:
         if not hasattr(self, "_stream") or self._stream is None:
             return
         # [FIXME] __del__ is not the best place for releasing resources
-        call_cuda_function(cudart.cudaStreamDestroy, self._stream)
+        call_cuda_function(cudart.cudaStreamDestroy(self._stream))
         self._stream = None
 
 
 def maybe_set_device(device_id):
-    device = call_cuda_function(cuda_driver.cuDeviceGet, device_id)
-    _, active = call_cuda_function(cuda_driver.cuDevicePrimaryCtxGetState, device)
+    cuda_driver.cuInit(device_id)
+    call_cuda_function(cuda_driver.cuDeviceGet(device_id))
+    _, active = call_cuda_function(cuda_driver.cuDevicePrimaryCtxGetState(device_id))
     if active:
-        call_cuda_function(cudart.cudaSetDevice, device_id)
+        call_cuda_function(cudart.cudaSetDevice(device_id))
