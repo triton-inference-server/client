@@ -128,7 +128,7 @@ def create_shared_memory_region(triton_shm_name, byte_size, device_id):
     """
     prev_device = None
     try:
-        cuda_driver.cuInit(device_id)
+        call_cuda_function(cuda_driver.cuInit(device_id))
         prev_device = call_cuda_function(cudart.cudaGetDevice())
         call_cuda_function(cudart.cudaSetDevice(device_id))
         device_ptr = call_cuda_function(cudart.cudaMalloc(byte_size))
