@@ -25,6 +25,6 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 numpy>=1.19.1
+perf-analyzer
 python-rapidjson>=0.9.1
 urllib3>=2.0.7
-perf-analyzer
