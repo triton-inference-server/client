@@ -227,6 +227,9 @@ def is_contiguous_data(
     calculated_stride = 1
     # iterate stride in reverse order [ndim-1, -1)
     for i in reversed(range(ndim)):
+        # don't check stride when shape is 1
+        if shape[i] == 1:
+            continue
         if stride[i] != calculated_stride:
             return False
         calculated_stride *= shape[i]
