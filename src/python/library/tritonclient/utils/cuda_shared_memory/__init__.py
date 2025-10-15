@@ -28,7 +28,7 @@
 # Check for dependency before other import so other imports can assume
 # the module is available (drop "try ... except .."")
 try:
-    from cuda import cudart
+    import cuda.bindings.runtime as cudart
 except ModuleNotFoundError as error:
     raise RuntimeError(
         "CUDA shared memory utilities require Python package 'cuda-python'"

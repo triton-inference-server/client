@@ -26,8 +26,8 @@
 
 from typing import Any
 
-from cuda import cuda as cuda_driver
-from cuda import cudart
+import cuda.bindings.driver as cuda_driver
+import cuda.bindings.runtime as cudart
 
 
 def call_cuda_function(function, *argv):
