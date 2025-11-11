@@ -30,8 +30,6 @@ on:
   push:
     branches:
       - main
-      - r**  # Release branches like r24.10
-      - springmeyer/python-actions  # Temporary: testing branch
     paths:
       - 'src/python/**'
       - '.github/workflows/python-tests.yml'
