@@ -1742,7 +1742,7 @@ class InferenceServerClient(InferenceServerClientBase):
 
     def start_stream(
         self, callback, stream_timeout=None, headers=None, compression_algorithm=None, 
-        daemon=False,
+        daemon=None,
     ):
         """Starts a grpc bi-directional stream to send streaming inferences.
         Note: When using stream, user must ensure the InferenceServerClient.close()
@@ -1770,7 +1770,7 @@ class InferenceServerClient(InferenceServerClientBase):
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
         daemon : bool
-            Make internal thread daemonic if set True. By default set to False.
+            Make internal thread daemonic if set True. By default set to None.
 
         Raises
         ------

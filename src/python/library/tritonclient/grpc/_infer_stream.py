@@ -53,10 +53,10 @@ class _InferStream:
     verbose : bool
         Enables verbose mode if set True.
     daemon : bool
-        Make handler thread daemonic if set True (default False).
+        Make handler thread daemonic if set True (default None).
     """
 
-    def __init__(self, callback, verbose, daemon=False):
+    def __init__(self, callback, verbose, daemon=None):
         self._callback = callback
         self._verbose = verbose
         self._request_queue = queue.Queue()
