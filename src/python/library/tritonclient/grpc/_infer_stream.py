@@ -52,9 +52,11 @@ class _InferStream:
         'error' would be None for a successful inference.
     verbose : bool
         Enables verbose mode if set True.
+    daemon : bool
+        Make handler thread daemonic if set True (default False).
     """
 
-    def __init__(self, callback, verbose):
+    def __init__(self, callback, verbose, daemon=False):
         self._callback = callback
         self._verbose = verbose
         self._request_queue = queue.Queue()
@@ -62,6 +64,7 @@ class _InferStream:
         self._cancelled = False
         self._active = True
         self._response_iterator = None
+        self.daemon = daemon
 
     def __del__(self):
         self.close(cancel_requests=True)
@@ -100,7 +103,7 @@ class _InferStream:
         if self._handler is not None:
             raise_error("Attempted to initialize already initialized InferStream")
         # Create a new thread to handle the gRPC response stream
-        self._handler = threading.Thread(target=self._process_response)
+        self._handler = threading.Thread(target=self._process_response, daemon=self.daemon)
         self._handler.start()
         if self._verbose:
             print("stream started...")

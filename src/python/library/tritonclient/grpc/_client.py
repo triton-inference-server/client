@@ -1741,7 +1741,8 @@ class InferenceServerClient(InferenceServerClientBase):
             raise_error_grpc(rpc_error)
 
     def start_stream(
-        self, callback, stream_timeout=None, headers=None, compression_algorithm=None
+        self, callback, stream_timeout=None, headers=None, compression_algorithm=None, 
+        daemon=False,
     ):
         """Starts a grpc bi-directional stream to send streaming inferences.
         Note: When using stream, user must ensure the InferenceServerClient.close()
@@ -1768,6 +1769,8 @@ class InferenceServerClient(InferenceServerClientBase):
             Optional grpc compression algorithm to be used on client side.
             Currently supports "deflate", "gzip" and None. By default, no
             compression is used.
+        daemon : bool
+            Make internal thread daemonic if set True. By default set to False.
 
         Raises
         ------
@@ -1784,7 +1787,7 @@ class InferenceServerClient(InferenceServerClientBase):
             )
         metadata = self._get_metadata(headers)
 
-        self._stream = _InferStream(callback, self._verbose)
+        self._stream = _InferStream(callback, self._verbose, daemon=daemon)
 
         try:
             response_iterator = self._client_stub.ModelStreamInfer(
