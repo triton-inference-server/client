@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -96,6 +96,7 @@ def _get_inference_request(
     if request_id != "":
         request.id = request_id
     for infer_input in inputs:
+        infer_input.validate_data()
         request.inputs.extend([infer_input._get_tensor()])
         if infer_input._get_content() is not None:
             request.raw_input_contents.extend([infer_input._get_content()])

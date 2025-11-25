@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -38,6 +38,27 @@ def raise_error(msg):
     Raise error with the provided message
     """
     raise InferenceServerException(msg=msg) from None
+
+
+def num_elements(shape):
+    """
+    Calculate the number of elements in an array given its shape.
+
+    Parameters
+    ----------
+    shape : list or tuple
+        Shape of the array.
+
+    Returns
+    -------
+    int
+        Number of elements in the array.
+    """
+
+    num_elements = 1
+    for dim in shape:
+        num_elements *= dim
+    return num_elements
 
 
 def serialized_byte_size(tensor_value):

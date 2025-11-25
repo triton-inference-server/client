@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -106,7 +106,11 @@ def _get_inference_request(
     if timeout is not None:
         parameters["timeout"] = timeout
 
-    infer_request["inputs"] = [this_input._get_tensor() for this_input in inputs]
+    infer_request["inputs"] = []
+    for infer_input in inputs:
+        infer_input.validate_data()
+        infer_request["inputs"].append(infer_input._get_tensor())
+
     if outputs:
         infer_request["outputs"] = [
             this_output._get_tensor() for this_output in outputs
