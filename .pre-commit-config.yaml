@@ -1,4 +1,4 @@
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,18 +26,18 @@
 
 exclude: ^src/grpc_generated
 repos:
-- repo: https://github.com/timothycrosley/isort
+- repo: https://github.com/PyCQA/isort
   rev: 5.12.0
   hooks:
   - id: isort
     additional_dependencies: [toml]
 - repo: https://github.com/psf/black
-  rev: 24.4.0
+  rev: 23.1.0
   hooks:
   - id: black
     types_or: [python, cython]
 - repo: https://github.com/PyCQA/flake8
-  rev: 5.0.4
+  rev: 7.3.0
   hooks:
   - id: flake8
     args: [--max-line-length=88, --select=C,E,F,W,B,B950, --extend-ignore = E203,E501]
@@ -58,7 +58,7 @@ repos:
 # More details about these pre-commit hooks here:
 # https://pre-commit.com/hooks.html
 - repo: https://github.com/pre-commit/pre-commit-hooks
-  rev: v4.4.0
+  rev: v6.0.0
   hooks:
   - id: check-case-conflict
   - id: check-executables-have-shebangs

@@ -147,9 +147,9 @@ def set_shared_memory_region(shm_handle, input_values, offset=0):
             # be handled by accessing its item and treat as Python object
             if input_value.dtype == np.object_:
                 byte_size = len(input_value.item())
-                shm_handle._mpsm_handle.buf[offset : offset + byte_size] = (
-                    input_value.item()
-                )
+                shm_handle._mpsm_handle.buf[
+                    offset : offset + byte_size
+                ] = input_value.item()
                 offset += byte_size
             else:
                 shm_tensor_view = np.ndarray(

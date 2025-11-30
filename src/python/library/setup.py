@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -71,6 +71,7 @@ extras_require = {
     "grpc": req_file("requirements_grpc.txt"),
     "http": req_file("requirements_http.txt"),
     "cuda": req_file("requirements_cuda.txt"),
+    "perf_analyzer": req_file("requirements_perf_analyzer.txt"),
 }
 
 extras_require["all"] = list(chain(extras_require.values()))
