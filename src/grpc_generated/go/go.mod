@@ -1,6 +1,6 @@
 module github.com/triton-inference-server/client/src/grpc_generated/go
 
-go 1.25.
+go 1.25.0
 
 require (
 	google.golang.org/grpc v1.77.0
