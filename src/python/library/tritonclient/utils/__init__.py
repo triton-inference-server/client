@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -28,6 +28,7 @@
 
 import struct
 
+import ml_dtypes
 import numpy as np
 
 from ._shared_memory_tensor import SharedMemoryTensor
@@ -149,6 +150,8 @@ def np_to_triton_dtype(np_dtype):
         return "UINT32"
     elif np_dtype == np.uint64:
         return "UINT64"
+    elif np_dtype == ml_dtypes.bfloat16:
+        return "BF16"
     elif np_dtype == np.float16:
         return "FP16"
     elif np_dtype == np.float32:
@@ -179,9 +182,11 @@ def triton_to_np_dtype(dtype):
         return np.uint32
     elif dtype == "UINT64":
         return np.uint64
+    elif dtype == "BF16":
+        return ml_dtypes.bfloat16
     elif dtype == "FP16":
         return np.float16
-    elif dtype == "FP32" or dtype == "BF16":
+    elif dtype == "FP32":
         return np.float32
     elif dtype == "FP64":
         return np.float64

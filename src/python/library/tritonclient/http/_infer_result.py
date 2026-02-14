@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -188,10 +188,6 @@ class InferResult:
                                     # need to decode the raw bytes to convert into
                                     # array elements.
                                     np_array = deserialize_bytes_tensor(
-                                        self._buffer[start_index:end_index]
-                                    )
-                                elif datatype == "BF16":
-                                    np_array = deserialize_bf16_tensor(
                                         self._buffer[start_index:end_index]
                                     )
                                 else:
