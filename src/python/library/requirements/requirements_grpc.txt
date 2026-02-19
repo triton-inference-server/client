@@ -27,5 +27,5 @@
 grpcio>=1.63.0,<1.68
 numpy>=1.19.1
 packaging>=14.1
-protobuf>=5.26,<7.0
+protobuf>=6.30.0,<7.0
 python-rapidjson>=0.9.1
