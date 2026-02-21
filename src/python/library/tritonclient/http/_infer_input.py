@@ -26,13 +26,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import numpy as np
-from tritonclient.utils import (
-    np_to_triton_dtype,
-    raise_error,
-    serialize_bf16_tensor,
-    serialize_byte_tensor,
-    triton_to_np_dtype,
-)
+from tritonclient.utils import np_to_triton_dtype, raise_error, serialize_byte_tensor
 
 
 class InferInput:

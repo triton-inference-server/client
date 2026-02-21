@@ -30,12 +30,7 @@ import zlib
 
 import numpy as np
 import rapidjson as json
-from tritonclient.utils import (
-    deserialize_bf16_tensor,
-    deserialize_bytes_tensor,
-    raise_error,
-    triton_to_np_dtype,
-)
+from tritonclient.utils import deserialize_bytes_tensor, raise_error, triton_to_np_dtype
 
 
 class InferResult:
