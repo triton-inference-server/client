@@ -366,6 +366,8 @@ class InferenceServerClient(InferenceServerClientBase):
             request_uri=request_uri, headers=headers, query_params=query_params
         )
 
+        _raise_if_error(response)
+
         return response.status_code == 200
 
     def is_server_ready(self, headers=None, query_params=None):
@@ -395,6 +397,8 @@ class InferenceServerClient(InferenceServerClientBase):
         response = self._get(
             request_uri=request_uri, headers=headers, query_params=query_params
         )
+
+        _raise_if_error(response)
 
         return response.status_code == 200
 
