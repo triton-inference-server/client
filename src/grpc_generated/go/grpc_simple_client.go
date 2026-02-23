@@ -157,6 +157,59 @@ func ModelInferRequest(client triton.GRPCInferenceServiceClient, rawInput [][]by
 	return modelInferResponse
 }
 
+func ModelInferRequestFromText(client triton.GRPCInferenceServiceClient, rawInput []string, modelName string, modelVersion string) *triton.ModelInferResponse {
+	/*
+		The encoded bytes tensor where each element has its length in first 4 bytes followed by the content
+		first 4 bytes need to be little endian
+		content does not require encoding LittleEndian
+	*/
+	var _bytes []byte
+	for _, text := range rawInput {
+		l := len(text)
+		b := make([]byte, 4)
+		binary.LittleEndian.PutUint16(b, uint16(l))
+		b = append(b, []byte(text)...)
+		_bytes = append(_bytes, b...)
+	}
+
+	// Create context for our request with 10 second timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	// Create request input tensors
+	inferInputs := []*triton.ModelInferRequest_InferInputTensor{
+		&triton.ModelInferRequest_InferInputTensor{
+			Name:     "INPUT0",
+			Datatype: "BYTES",
+			Shape:    []int64{1, int64(len(rawInput))},
+		},
+	}
+
+	// Create request input output tensors
+	inferOutputs := []*triton.ModelInferRequest_InferRequestedOutputTensor{
+		&triton.ModelInferRequest_InferRequestedOutputTensor{
+			Name: "OUTPUT0",
+		},
+	}
+
+	// Create inference request for specific model/version
+	modelInferRequest := triton.ModelInferRequest{
+		ModelName:    modelName,
+		ModelVersion: modelVersion,
+		Inputs:       inferInputs,
+		Outputs:      inferOutputs,
+	}
+
+	modelInferRequest.RawInputContents = append(modelInferRequest.RawInputContents, _bytes)
+
+	// Submit inference request to server
+	modelInferResponse, err := client.ModelInfer(ctx, &modelInferRequest)
+	if err != nil {
+		log.Fatalf("Error processing InferRequest: %v", err)
+	}
+	return modelInferResponse
+}
+
 // Convert int32 input data into raw bytes (assumes Little Endian)
 func Preprocess(inputs [][]int32) [][]byte {
 	inputData0 := inputs[0]
@@ -252,4 +305,25 @@ func main() {
 			log.Fatalf("Incorrect results from inference")
 		}
 	}
+
+	/* We use a simple model that takes 2 input utf-8 texts and returns 2 output tensors. */
+	inferResponse = ModelInferRequestFromText(client, []string{"hello", "world!"}, FLAGS.ModelName, FLAGS.ModelVersion)
+
+	/* We expect there to be 2 results (each with batch-size 1). Walk
+	over all 16 result elements and print the sum and difference
+	calculated by the model. */
+	outputs = Postprocess(inferResponse)
+	outputData0 = outputs[0]
+	outputData1 = outputs[1]
+
+	fmt.Println("\nChecking Inference Outputs\n--------------------------")
+	for i := 0; i < outputSize; i++ {
+		fmt.Printf("%d + %d = %d\n", inputData0[i], inputData1[i], outputData0[i])
+		fmt.Printf("%d - %d = %d\n", inputData0[i], inputData1[i], outputData1[i])
+		if (inputData0[i]+inputData1[i] != outputData0[i]) ||
+			inputData0[i]-inputData1[i] != outputData1[i] {
+			log.Fatalf("Incorrect results from inference")
+		}
+	}
+
 }
