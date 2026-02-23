@@ -45,6 +45,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.zip.GZIPOutputStream;
+import java.util.zip.DeflaterOutputStream;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.apache.http.HttpResponse;
@@ -340,6 +342,27 @@ public class InferenceServerClient implements AutoCloseable {
           "Inference-Header-Content-Length", String.valueOf(jsonBytes.length));
     }
 
+    // Apply request compression if specified
+    byte[] finalRequestBody = bodyBytes.toByteArray();
+    if (arg.requestCompressionAlgorithm != null) {
+      if ("gzip".equalsIgnoreCase(arg.requestCompressionAlgorithm)) {
+        finalRequestBody = compressGzip(finalRequestBody);
+        arg.headers.put("Content-Encoding", "gzip");
+      } else if ("deflate".equalsIgnoreCase(arg.requestCompressionAlgorithm)) {
+        finalRequestBody = compressDeflate(finalRequestBody);
+        arg.headers.put("Content-Encoding", "deflate");
+      }
+    }
+
+    // Set response compression header if specified
+    if (arg.responseCompressionAlgorithm != null) {
+      if ("gzip".equalsIgnoreCase(arg.responseCompressionAlgorithm)) {
+        arg.headers.put("Accept-Encoding", "gzip");
+      } else if ("deflate".equalsIgnoreCase(arg.responseCompressionAlgorithm)) {
+        arg.headers.put("Accept-Encoding", "deflate");
+      }
+    }
+
     // Create target URI.
     URIBuilder ub = new URIBuilder(this.getUrl());
     String safeModelName =
@@ -356,13 +379,31 @@ public class InferenceServerClient implements AutoCloseable {
     // Crete HttpPost, uri, body and headers.
     HttpPost post = new HttpPost(ub.build());
     arg.headers.forEach(post::setHeader);
-    post.setEntity(new NByteArrayEntity(bodyBytes.toByteArray()));
+    post.setEntity(new NByteArrayEntity(finalRequestBody));
     return post;
   }
 
   private String getUrl() throws Exception
   {
     return "http://" + this.endpoint.getEndpoint();
+  }
+
+  private byte[] compressGzip(byte[] data) throws IOException
+  {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (GZIPOutputStream gzipOut = new GZIPOutputStream(baos)) {
+      gzipOut.write(data);
+    }
+    return baos.toByteArray();
+  }
+
+  private byte[] compressDeflate(byte[] data) throws IOException
+  {
+    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    try (DeflaterOutputStream deflateOut = new DeflaterOutputStream(baos)) {
+      deflateOut.write(data);
+    }
+    return baos.toByteArray();
   }
 
   public InferResult infer(
@@ -387,6 +428,8 @@ public class InferenceServerClient implements AutoCloseable {
     int timeout = -1;
     Map<String, String> headers = new HashMap<>();
     Map<String, String> queryParams = new HashMap<>();
+    String requestCompressionAlgorithm = null;
+    String responseCompressionAlgorithm = null;
 
     public InferArguments(
         String modelName, List<InferInput> inputs,
@@ -462,6 +505,18 @@ public class InferenceServerClient implements AutoCloseable {
     public InferArguments addQueryParam(String key, String value)
     {
       this.queryParams.put(key, value);
+      return this;
+    }
+
+    public InferArguments setRequestCompressionAlgorithm(String algorithm)
+    {
+      this.requestCompressionAlgorithm = algorithm;
+      return this;
+    }
+
+    public InferArguments setResponseCompressionAlgorithm(String algorithm)
+    {
+      this.responseCompressionAlgorithm = algorithm;
       return this;
     }
   }

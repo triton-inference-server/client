@@ -40,6 +40,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
+import java.util.zip.GZIPInputStream;
+import java.util.zip.InflaterInputStream;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.Header;
 import org.apache.http.HttpEntity;
@@ -77,6 +79,17 @@ public class InferResult {
     Preconditions.checkState(
         entity != null, "Get null entity from HTTP response.");
     InputStream stream = entity.getContent();
+    
+    // Check for response compression and decompress if needed
+    Header contentEncodingHeader = resp.getFirstHeader("Content-Encoding");
+    if (contentEncodingHeader != null) {
+      String encoding = contentEncodingHeader.getValue().toLowerCase();
+      if ("gzip".equals(encoding)) {
+        stream = new GZIPInputStream(stream);
+      } else if ("deflate".equals(encoding)) {
+        stream = new InflaterInputStream(stream);
+      }
+    }
 
     int httpCode = resp.getStatusLine().getStatusCode();
     if (httpCode != HttpStatus.SC_OK) {
