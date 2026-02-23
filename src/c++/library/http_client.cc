@@ -1363,10 +1363,20 @@ InferenceServerHttpClient::Create(
 
 InferenceServerHttpClient::InferenceServerHttpClient(
     const std::string& url, bool verbose, const HttpSslOptions& ssl_options)
-    : InferenceServerClient(verbose), url_(url), ssl_options_(ssl_options),
+    : InferenceServerClient(verbose), ssl_options_(ssl_options),
       easy_handle_(reinterpret_cast<void*>(curl_easy_init())),
       multi_handle_(curl_multi_init())
 {
+    std::string unix_socket_prefix("unix://");
+
+    if (strncmp(url.c_str(), unix_socket_prefix.c_str(), unix_socket_prefix.length()) == 0) {
+        // Unix domain socket
+        unix_socket_ = url.substr(unix_socket_prefix.length());
+        url_ = "http://localhost";
+    } else {
+        // TCP socket
+        url_ = url;
+    }
 }
 
 InferenceServerHttpClient::~InferenceServerHttpClient()
@@ -2158,7 +2168,12 @@ InferenceServerHttpClient::PreRunProcessing(
   curl_easy_setopt(curl, CURLOPT_URL, request_uri.c_str());
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
   curl_easy_setopt(curl, CURLOPT_POST, 1L);
-  curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+
+  if (unix_socket_.empty()) {
+    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+  } else {
+    curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unix_socket_.c_str());
+  }
 
   if (options.client_timeout_ != 0) {
     uint64_t timeout_ms = (options.client_timeout_ / 1000);
@@ -2400,7 +2415,13 @@ InferenceServerHttpClient::Get(
 
   curl_easy_setopt(curl, CURLOPT_URL, request_uri.c_str());
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-  curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+
+  if (unix_socket_.empty()) {
+    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+  } else {
+    curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unix_socket_.c_str());
+  }
+
   if (verbose_) {
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
   }
@@ -2476,9 +2497,15 @@ InferenceServerHttpClient::Post(
 
   curl_easy_setopt(curl, CURLOPT_URL, request_uri.c_str());
   curl_easy_setopt(curl, CURLOPT_USERAGENT, "libcurl-agent/1.0");
-  curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
   curl_easy_setopt(curl, CURLOPT_POSTFIELDSIZE, request.size());
   curl_easy_setopt(curl, CURLOPT_POSTFIELDS, request.c_str());
+
+  if (unix_socket_.empty()) {
+    curl_easy_setopt(curl, CURLOPT_TCP_NODELAY, 1L);
+  } else {
+    curl_easy_setopt(curl, CURLOPT_UNIX_SOCKET_PATH, unix_socket_.c_str());
+  }
+
   if (verbose_) {
     curl_easy_setopt(curl, CURLOPT_VERBOSE, 1L);
   }
