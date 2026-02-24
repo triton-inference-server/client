@@ -307,6 +307,39 @@ public class InferResult {
     return (double[]) getOutputImpl(out, double.class, ByteBuffer::getDouble);
   }
 
+  /**
+   * Get String tensor named as by parameter output. The tensor must be of
+   * DataType.BYTES.
+   *
+   * @param output name of output tensor.
+   * @return null if output not found or the tensor in String.
+   */
+  public String getOutputAsString(String output)
+  {
+    IOTensor out = this.response.getOutputByName(output);
+    if (out == null) {
+      return null;
+    }
+
+    Object[] data = out.getData();
+    if (data == null || data.length == 0) {
+      return null;
+    }
+
+    Preconditions.checkArgument(
+        out.getDatatype() == DataType.BYTES,
+        "Could not get String from data of type %s on output %s.",
+        out.getDatatype(), out.getName());
+    if (data[0] instanceof String) {
+      return (String) data[0];
+    } else if (data[0] instanceof byte[]) {
+      return new String(
+          (byte[]) data[0], java.nio.charset.StandardCharsets.UTF_8);
+    } else {
+      return data[0].toString();
+    }
+  }
+
   private <T> Object
   getOutputImpl(IOTensor out, Class<T> clazz, Function<ByteBuffer, T> getter)
   {
