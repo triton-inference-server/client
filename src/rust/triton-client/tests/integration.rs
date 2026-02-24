@@ -303,3 +303,75 @@ async fn online_repository_index() {
     // Just verify the call succeeds; the list may be empty.
     eprintln!("Repository contains {} models", models.len());
 }
+
+#[tokio::test]
+async fn online_infer_identity_fp32() {
+    let Some(url) = triton_url() else {
+        eprintln!("Skipping online test: TRITON_TEST_URL not set");
+        return;
+    };
+    let client = TritonClient::connect(&url).await.unwrap();
+
+    // Send a known FP32 vector through the identity backend and verify
+    // the output matches the input exactly.
+    let input_data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
+    let input = InferInput::new("INPUT0", vec![5], DataType::Fp32)
+        .with_data_f32(&input_data);
+
+    let request = InferRequestBuilder::new("identity_fp32")
+        .model_version("1")
+        .request_id("integration-test-001")
+        .input(input)
+        .output("OUTPUT0")
+        .build();
+
+    let response = client.infer(request).await.unwrap();
+    assert_eq!(response.model_name(), "identity_fp32");
+
+    let output_data = response.output_as_f32(0).unwrap();
+    assert_eq!(
+        output_data, input_data,
+        "Identity model should return input unchanged"
+    );
+    eprintln!(
+        "Identity inference passed: {:?} -> {:?}",
+        input_data, output_data
+    );
+}
+
+#[tokio::test]
+async fn online_model_metadata() {
+    let Some(url) = triton_url() else {
+        eprintln!("Skipping online test: TRITON_TEST_URL not set");
+        return;
+    };
+    let client = TritonClient::connect(&url).await.unwrap();
+
+    let metadata = client.model_metadata("identity_fp32", "1").await.unwrap();
+    assert_eq!(metadata.name, "identity_fp32");
+    assert!(!metadata.inputs.is_empty(), "Model should have inputs");
+    assert!(!metadata.outputs.is_empty(), "Model should have outputs");
+    eprintln!(
+        "Model metadata: {} inputs, {} outputs",
+        metadata.inputs.len(),
+        metadata.outputs.len()
+    );
+}
+
+#[tokio::test]
+async fn online_model_ready() {
+    let Some(url) = triton_url() else {
+        eprintln!("Skipping online test: TRITON_TEST_URL not set");
+        return;
+    };
+    let client = TritonClient::connect(&url).await.unwrap();
+
+    let ready = client
+        .is_model_ready("identity_fp32", "1")
+        .await
+        .unwrap();
+    assert!(ready, "identity_fp32 model should be ready");
+
+    let ready = client.is_model_ready("simple", "1").await.unwrap();
+    assert!(ready, "simple model should be ready");
+}
