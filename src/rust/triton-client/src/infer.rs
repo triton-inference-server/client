@@ -244,6 +244,48 @@ impl InferInput {
         }
     }
 
+    /// Attaches unsigned 8-bit integer tensor data.
+    ///
+    /// Also suitable for any data already in raw byte form where each
+    /// element is a single byte.
+    #[must_use]
+    pub fn with_data_u8(self, data: &[u8]) -> Self {
+        Self {
+            data: Some(data.to_vec()),
+            ..self
+        }
+    }
+
+    /// Attaches signed 8-bit integer tensor data.
+    #[must_use]
+    pub fn with_data_i8(self, data: &[i8]) -> Self {
+        let raw: Vec<u8> = data.iter().map(|&v| v as u8).collect();
+        Self {
+            data: Some(raw),
+            ..self
+        }
+    }
+
+    /// Attaches unsigned 16-bit integer tensor data.
+    #[must_use]
+    pub fn with_data_u16(self, data: &[u16]) -> Self {
+        let raw: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+        Self {
+            data: Some(raw),
+            ..self
+        }
+    }
+
+    /// Attaches signed 16-bit integer tensor data.
+    #[must_use]
+    pub fn with_data_i16(self, data: &[i16]) -> Self {
+        let raw: Vec<u8> = data.iter().flat_map(|v| v.to_le_bytes()).collect();
+        Self {
+            data: Some(raw),
+            ..self
+        }
+    }
+
     /// Attaches 32-bit floating-point tensor data.
     #[must_use]
     pub fn with_data_f32(self, data: &[f32]) -> Self {
@@ -736,10 +778,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(4)
-            .map(|chunk| {
-                let bytes: [u8; 4] = [chunk[0], chunk[1], chunk[2], chunk[3]];
-                f32::from_le_bytes(bytes)
-            })
+            .map(|chunk| f32::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -763,12 +802,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(8)
-            .map(|chunk| {
-                let bytes: [u8; 8] = [
-                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-                ];
-                f64::from_le_bytes(bytes)
-            })
+            .map(|chunk| f64::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -792,10 +826,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(4)
-            .map(|chunk| {
-                let bytes: [u8; 4] = [chunk[0], chunk[1], chunk[2], chunk[3]];
-                i32::from_le_bytes(bytes)
-            })
+            .map(|chunk| i32::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -819,12 +850,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(8)
-            .map(|chunk| {
-                let bytes: [u8; 8] = [
-                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-                ];
-                i64::from_le_bytes(bytes)
-            })
+            .map(|chunk| i64::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -848,10 +874,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(4)
-            .map(|chunk| {
-                let bytes: [u8; 4] = [chunk[0], chunk[1], chunk[2], chunk[3]];
-                u32::from_le_bytes(bytes)
-            })
+            .map(|chunk| u32::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -875,12 +898,7 @@ impl InferResponse {
         }
         Ok(raw
             .chunks_exact(8)
-            .map(|chunk| {
-                let bytes: [u8; 8] = [
-                    chunk[0], chunk[1], chunk[2], chunk[3], chunk[4], chunk[5], chunk[6], chunk[7],
-                ];
-                u64::from_le_bytes(bytes)
-            })
+            .map(|chunk| u64::from_le_bytes(chunk.try_into().unwrap()))
             .collect())
     }
 
@@ -1032,6 +1050,42 @@ mod tests {
 
         let raw = input.data.as_ref().unwrap();
         assert_eq!(raw, &[1, 0, 1]);
+    }
+
+    #[test]
+    fn infer_input_with_u8_data() {
+        let data: Vec<u8> = vec![0, 127, 255];
+        let input = InferInput::new("quantized", vec![1, 3], DataType::Uint8).with_data_u8(&data);
+
+        let raw = input.data.as_ref().unwrap();
+        assert_eq!(raw, &[0, 127, 255]);
+    }
+
+    #[test]
+    fn infer_input_with_i8_data() {
+        let data: Vec<i8> = vec![-128, 0, 127];
+        let input = InferInput::new("quantized", vec![1, 3], DataType::Int8).with_data_i8(&data);
+
+        let raw = input.data.as_ref().unwrap();
+        assert_eq!(raw.len(), 3);
+    }
+
+    #[test]
+    fn infer_input_with_u16_data() {
+        let data: Vec<u16> = vec![0, 1000, 65535];
+        let input = InferInput::new("input", vec![1, 3], DataType::Uint16).with_data_u16(&data);
+
+        let raw = input.data.as_ref().unwrap();
+        assert_eq!(raw.len(), 6); // 3 u16 * 2 bytes
+    }
+
+    #[test]
+    fn infer_input_with_i16_data() {
+        let data: Vec<i16> = vec![-32768, 0, 32767];
+        let input = InferInput::new("input", vec![1, 3], DataType::Int16).with_data_i16(&data);
+
+        let raw = input.data.as_ref().unwrap();
+        assert_eq!(raw.len(), 6); // 3 i16 * 2 bytes
     }
 
     #[test]

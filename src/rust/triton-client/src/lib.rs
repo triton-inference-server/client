@@ -79,3 +79,16 @@ pub mod infer;
 
 /// Re-export of the main client type for convenience.
 pub use client::TritonClient;
+
+/// Convenience re-exports for the most common types.
+///
+/// ```rust
+/// use triton_client::prelude::*;
+/// ```
+pub mod prelude {
+    pub use crate::client::{ClientOptions, TritonClient};
+    pub use crate::error::{Error, Result};
+    pub use crate::infer::{
+        DataType, InferInput, InferRequestBuilder, InferRequestedOutput, InferResponse,
+    };
+}

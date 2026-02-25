@@ -26,8 +26,7 @@ tokio = { version = "1", features = ["full"] }
 ### Basic Example
 
 ```rust
-use triton_client::client::TritonClient;
-use triton_client::infer::{DataType, InferInput, InferRequestBuilder};
+use triton_client::prelude::*;
 
 #[tokio::main]
 async fn main() -> triton_client::error::Result<()> {

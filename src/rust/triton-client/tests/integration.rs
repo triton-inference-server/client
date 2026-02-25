@@ -259,8 +259,11 @@ fn infer_response_output_lookup_by_name() {
 
 #[tokio::test]
 async fn connect_to_invalid_url_fails() {
-    // Attempting to connect to a non-existent server should fail.
-    let result = TritonClient::connect("http://127.0.0.1:1").await;
+    // Use TEST-NET (RFC 5737) address which is guaranteed non-routable,
+    // with a short timeout to avoid long waits.
+    let options = ClientOptions::default()
+        .connect_timeout(std::time::Duration::from_millis(200));
+    let result = TritonClient::connect_with_options("http://192.0.2.1:1", options).await;
     assert!(result.is_err());
 }
 
