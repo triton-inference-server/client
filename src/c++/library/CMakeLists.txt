@@ -182,7 +182,7 @@ if(TRITON_ENABLE_CC_GRPC)
   #
   # libgrpcclient.so and libgrpcclient_static.a
   #
-  configure_file(libgrpcclient.ldscript libgrpcclient.ldscript COPYONLY)
+  configure_file(libgrpcclient.ldscript ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript COPYONLY)
 
   # libgrpcclient object build
   set(
@@ -245,7 +245,7 @@ if(TRITON_ENABLE_CC_GRPC)
        grpcclient
        PROPERTIES
          LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
-         LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
+         LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript"
      )
   endif() # NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO
 
