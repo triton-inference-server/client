@@ -364,11 +364,15 @@ impl InferInput {
     ///
     /// Each byte slice is prepended with its 4-byte little-endian length,
     /// following the Triton BYTES tensor encoding.
+    ///
+    /// # Panics
+    ///
+    /// Panics if any individual byte sequence is longer than `u32::MAX`
+    /// (~4 GiB). This limit is imposed by the Triton BYTES wire format.
     #[must_use]
     pub fn with_data_bytes(self, data: &[&[u8]]) -> Self {
         let mut raw = Vec::new();
         for item in data {
-            #[allow(clippy::cast_possible_truncation)]
             let len = u32::try_from(item.len())
                 .expect("byte sequence length exceeds u32::MAX");
             raw.extend_from_slice(&len.to_le_bytes());
