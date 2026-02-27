@@ -1,5 +1,5 @@
 <!--
-# Copyright 2021-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -178,7 +178,7 @@ available from [NVIDIA GPU Cloud
 (NGC)](https://ngc.nvidia.com). Before attempting to pull the
 container ensure you have access to NGC.  For step-by-step
 instructions, see the [NGC Getting Started
-Guide](http://docs.nvidia.com/ngc/ngc-getting-started-guide/index.html).
+Guide](https://docs.nvidia.com/ngc/latest/ngc-user-guide.html).
 
 Use docker pull to get the client libraries and examples container
 from NGC.
@@ -574,7 +574,7 @@ this feature is enabled, the Triton server will return standard gRPC error codes
 and subsequently close the stream after delivering the error. This feature is
 optional can be enabled by adding header with `triton_grpc_error` key and `true` as
 value. See [grpc error
-codes](https://github.com/triton-inference-server/server/tree/main#GRPC-Status-Codes) in the server to learn about how this is handled on the server side. See gRPC
+codes](#GRPC-Status-Codes) in the server to learn about how this is handled on the server side. See gRPC
 guide on [status-codes](https://grpc.io/docs/guides/status-codes/) for more details.
 Below is a Python snippet to enable the feature. Without this header Triton server
 will continue streaming in default mode returning error message and status inside
@@ -662,7 +662,7 @@ module](src/python/library/tritonclient/utils/cuda_shared_memory)
 is provided that can be used with the Python client library to create,
 set and destroy CUDA shared memory. The module currently supports
 numpy arrays ([example usage](src/python/examples/simple_http_cudashm_client.py))
-and DLPack tensors ([example usage](src/python/library/tests/test_dlpack.py)).
+and DLPack tensors ([example usage](src/python/library/tests/test_cuda_shared_memory.py)).
 
 ### Client API for Stateful Models
 
@@ -806,4 +806,6 @@ the raw image binaries in the request and receive classification
 results without preprocessing the images on the client.
 
 To try this example you should follow the [DALI ensemble example
-instructions](https://github.com/triton-inference-server/dali_backend/tree/main/docs/examples/inception_ensemble).
+instructions](https://github.com/triton-inference-server/dali_backend/tree/075bb874ae99d20bf3bc67e26937cdb7b05a3b20/docs/examples/inception_ensemble).
+
+**Important Note:** TensorFlow backend has been deprecated.
