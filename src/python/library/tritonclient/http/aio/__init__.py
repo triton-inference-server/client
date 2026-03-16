@@ -107,6 +107,8 @@ class InferenceServerClient(InferenceServerClientBase):
         conn_timeout=60.0,
         ssl=False,
         ssl_context=None,
+        proxy: aiohttp.typedefs.StrOrURL | None = None,
+        proxy_auth: aiohttp.helpers.BasicAuth | None = None
     ):
         super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
@@ -118,6 +120,8 @@ class InferenceServerClient(InferenceServerClientBase):
             connector=self._conn,
             timeout=aiohttp.ClientTimeout(total=conn_timeout),
             auto_decompress=False,
+            proxy=proxy,
+            proxy_auth=proxy_auth,
         )
         self._verbose = verbose
 
