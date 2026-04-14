@@ -1,0 +1,25 @@
+[package]
+name = "triton-client"
+version = "0.1.0"
+edition = "2021"
+authors = ["NVIDIA CORPORATION & AFFILIATES"]
+description = "Rust client library for NVIDIA Triton Inference Server"
+license = "BSD-3-Clause"
+repository = "https://github.com/triton-inference-server/client"
+keywords = ["triton", "inference", "grpc", "nvidia", "ml"]
+categories = ["api-bindings", "network-programming", "science"]
+readme = "README.md"
+
+[dependencies]
+prost = "0.13"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "time"] }
+tokio-stream = "0.1"
+tonic = "0.12"
+
+[build-dependencies]
+tonic-build = "0.12"
+
+[dev-dependencies]
+tokio = { version = "1", features = ["full"] }
+tokio-stream = "0.1"
