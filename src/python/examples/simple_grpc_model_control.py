@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -98,6 +98,32 @@ if __name__ == "__main__":
     triton_client.unload_model(model_name)
     if triton_client.is_model_ready(model_name):
         print("FAILED : Unload Model")
+        sys.exit(1)
+
+    # Single path component longer than NAME_MAX must be rejected without
+    # terminating the server (invalid-arg response, not process abort).
+    long_path = "file:" + ("A" * 256)
+    try:
+        triton_client.load_model(
+            model_name,
+            config="{}",
+            files={long_path: b"a"},
+        )
+    except InferenceServerException as e:
+        st = e.status() or ""
+        if "Invalid file path" not in st:
+            print(
+                "FAILED: expected 'Invalid file path' for oversized file path; got {!r}".format(
+                    st
+                )
+            )
+            sys.exit(1)
+    else:
+        print("FAILED: expected error for oversized file parameter")
+        sys.exit(1)
+
+    if not triton_client.is_server_live():
+        print("FAILED: server not live after rejected load")
         sys.exit(1)
 
     # Trying to load wrong model name should emit exception
