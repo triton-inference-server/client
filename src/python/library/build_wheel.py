@@ -195,25 +195,40 @@ if __name__ == "__main__":
     cpdir("requirements", os.path.join(FLAGS.whl_dir, "requirements"))
 
     os.chdir(FLAGS.whl_dir)
-    print("=== Building wheel")
-    if FLAGS.linux:
-        if os.uname().machine == "aarch64":
-            platform_name = "manylinux2014_aarch64"
-        elif os.uname().machine == "ppc64le":
-            platform_name = "manylinux2014_ppc64le"
-        else:
-            platform_name = "manylinux_2_39_x86_64"
-        args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
-    else:
-        args = ["python3", "setup.py", "bdist_wheel"]
-
     wenv = os.environ.copy()
     wenv["VERSION"] = FLAGS.triton_version
-    p = subprocess.Popen(args, env=wenv)
-    p.wait()
-    fail_if(p.returncode != 0, "setup.py failed")
 
-    cpdir("dist", FLAGS.dest_dir)
+    print("=== Building wheel")
+    if FLAGS.linux:
+        arch = os.uname().machine
+        # Build with a bare linux_{arch} tag first.  auditwheel will inspect
+        # the wheel's native extensions, find the highest glibc symbol version
+        # they actually require, and emit a correctly-tagged manylinux wheel.
+        p = subprocess.Popen(
+            ["python3", "setup.py", "bdist_wheel", "--plat-name", f"linux_{arch}"],
+            env=wenv,
+        )
+        p.wait()
+        fail_if(p.returncode != 0, "setup.py failed")
+
+        dist_dir = os.path.join(os.getcwd(), "dist")
+        wheels = [w for w in os.listdir(dist_dir) if w.endswith(".whl")]
+        fail_if(len(wheels) != 1, f"expected 1 wheel in dist/, found: {wheels}")
+        wheel_path = os.path.join(dist_dir, wheels[0])
+
+        print(f"=== Running auditwheel repair on {wheels[0]}")
+        r = subprocess.run(
+            ["auditwheel", "repair", wheel_path, "--wheel-dir", FLAGS.dest_dir],
+        )
+        fail_if(r.returncode != 0, "auditwheel repair failed")
+    else:
+        p = subprocess.Popen(
+            ["python3", "setup.py", "bdist_wheel"],
+            env=wenv,
+        )
+        p.wait()
+        fail_if(p.returncode != 0, "setup.py failed")
+        cpdir("dist", FLAGS.dest_dir)
 
     print("=== Output wheel file is in: {}".format(FLAGS.dest_dir))
     touch(os.path.join(FLAGS.dest_dir, "stamp.whl"))
