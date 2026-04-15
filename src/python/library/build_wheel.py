@@ -202,7 +202,7 @@ if __name__ == "__main__":
         elif os.uname().machine == "ppc64le":
             platform_name = "manylinux2014_ppc64le"
         else:
-            platform_name = "manylinux2014_x86_64"
+            platform_name = "manylinux_2_39_x86_64"
         args = ["python3", "setup.py", "bdist_wheel", "--plat-name", platform_name]
     else:
         args = ["python3", "setup.py", "bdist_wheel"]
