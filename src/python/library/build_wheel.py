@@ -217,10 +217,17 @@ if __name__ == "__main__":
         wheel_path = os.path.join(dist_dir, wheels[0])
 
         print(f"=== Running auditwheel repair on {wheels[0]}")
-        r = subprocess.run(
-            ["auditwheel", "repair", wheel_path, "--wheel-dir", FLAGS.dest_dir],
-        )
-        fail_if(r.returncode != 0, "auditwheel repair failed")
+        # auditwheel show exits non-zero for pure-Python wheels (NonPlatformWheel).
+        # In that case the wheel has no glibc dependencies; copy it as-is.
+        show = subprocess.run(["auditwheel", "show", wheel_path], capture_output=True)
+        if show.returncode != 0:
+            print("=== No native extensions found; copying wheel as-is")
+            cpdir(dist_dir, FLAGS.dest_dir)
+        else:
+            r = subprocess.run(
+                ["auditwheel", "repair", wheel_path, "--wheel-dir", FLAGS.dest_dir],
+            )
+            fail_if(r.returncode != 0, "auditwheel repair failed")
     else:
         p = subprocess.Popen(
             ["python3", "setup.py", "bdist_wheel"],
