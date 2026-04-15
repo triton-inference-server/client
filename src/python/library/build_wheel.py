@@ -227,10 +227,26 @@ if __name__ == "__main__":
 
         if r.returncode != 0 and "no ELF" in r.stderr:
             # Pure Python wheel — no native extensions to bundle.
-            # Fall back to auditwheel addtag to stamp the manylinux platform tag.
-            print(f"=== Pure Python wheel, falling back to auditwheel addtag")
+            # Fall back to `wheel tags` to stamp the manylinux platform tag.
+            # (auditwheel addtag was removed in auditwheel 6.0)
+            arch = os.uname().machine
+            manylinux_tag = f"manylinux_2_28_{arch}"
+            print(
+                f"=== Pure Python wheel, falling back to wheel tags ({manylinux_tag})"
+            )
+            copied = os.path.join(FLAGS.dest_dir, os.path.basename(wheel_path))
+            shutil.copy(wheel_path, copied)
             r = subprocess.run(
-                ["auditwheel", "addtag", wheel_path, "--wheel-dir", FLAGS.dest_dir],
+                [
+                    "python3",
+                    "-m",
+                    "wheel",
+                    "tags",
+                    "--platform-tag",
+                    manylinux_tag,
+                    "--remove",
+                    copied,
+                ],
             )
 
         fail_if(r.returncode != 0, "auditwheel repair/addtag failed")
