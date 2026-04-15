@@ -219,8 +219,21 @@ if __name__ == "__main__":
         print(f"=== Running auditwheel repair on {wheels[0]}")
         r = subprocess.run(
             ["auditwheel", "repair", wheel_path, "--wheel-dir", FLAGS.dest_dir],
+            capture_output=True,
+            text=True,
         )
-        fail_if(r.returncode != 0, "auditwheel repair failed")
+        sys.stdout.write(r.stdout)
+        sys.stderr.write(r.stderr)
+
+        if r.returncode != 0 and "no ELF" in r.stdout:
+            # Pure Python wheel — no native extensions to bundle.
+            # Fall back to auditwheel addtag to stamp the manylinux platform tag.
+            print(f"=== Pure Python wheel, falling back to auditwheel addtag")
+            r = subprocess.run(
+                ["auditwheel", "addtag", wheel_path, "--wheel-dir", FLAGS.dest_dir],
+            )
+
+        fail_if(r.returncode != 0, "auditwheel repair/addtag failed")
     else:
         p = subprocess.Popen(
             ["python3", "setup.py", "bdist_wheel"],
