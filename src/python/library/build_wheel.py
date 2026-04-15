@@ -83,14 +83,6 @@ if __name__ == "__main__":
         required=False,
         help="Include linux specific artifacts.",
     )
-    parser.add_argument(
-        "--perf-analyzer",
-        type=str,
-        required=False,
-        default=None,
-        help="perf-analyzer path.",
-    )
-
     FLAGS = parser.parse_args()
 
     FLAGS.triton_version = None
@@ -178,17 +170,6 @@ if __name__ == "__main__":
             "tritonclient/utils/cuda_shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
         )
-
-        # Copy the pre-compiled perf_analyzer binary
-        if FLAGS.perf_analyzer is not None:
-            # The permission bits need to be copied to along with the executable
-            shutil.copy(
-                FLAGS.perf_analyzer, os.path.join(FLAGS.whl_dir, "perf_analyzer")
-            )
-
-            # Create a symbolic link for backwards compatibility
-            if not os.path.exists(os.path.join(FLAGS.whl_dir, "perf_client")):
-                os.symlink("perf_analyzer", os.path.join(FLAGS.whl_dir, "perf_client"))
 
     shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
     shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))
