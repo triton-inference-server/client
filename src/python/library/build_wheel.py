@@ -199,65 +199,13 @@ if __name__ == "__main__":
     wenv["VERSION"] = FLAGS.triton_version
 
     print("=== Building wheel")
-    if FLAGS.linux:
-        arch = os.uname().machine
-        # Build with a bare linux_{arch} tag first.  auditwheel will inspect
-        # the wheel's native extensions, find the highest glibc symbol version
-        # they actually require, and emit a correctly-tagged manylinux wheel.
-        p = subprocess.Popen(
-            ["python3", "setup.py", "bdist_wheel", "--plat-name", f"linux_{arch}"],
-            env=wenv,
-        )
-        p.wait()
-        fail_if(p.returncode != 0, "setup.py failed")
-
-        dist_dir = os.path.join(os.getcwd(), "dist")
-        wheels = [w for w in os.listdir(dist_dir) if w.endswith(".whl")]
-        fail_if(len(wheels) != 1, f"expected 1 wheel in dist/, found: {wheels}")
-        wheel_path = os.path.join(dist_dir, wheels[0])
-
-        print(f"=== Running auditwheel repair on {wheels[0]}")
-        r = subprocess.run(
-            ["auditwheel", "repair", wheel_path, "--wheel-dir", FLAGS.dest_dir],
-            capture_output=True,
-            text=True,
-        )
-        sys.stdout.write(r.stdout)
-        sys.stderr.write(r.stderr)
-
-        if r.returncode != 0 and "no ELF" in r.stderr:
-            # Pure Python wheel — no native extensions to bundle.
-            # Fall back to `wheel tags` to stamp the manylinux platform tag.
-            # (auditwheel addtag was removed in auditwheel 6.0)
-            arch = os.uname().machine
-            manylinux_tag = f"manylinux_2_28_{arch}"
-            print(
-                f"=== Pure Python wheel, falling back to wheel tags ({manylinux_tag})"
-            )
-            copied = os.path.join(FLAGS.dest_dir, os.path.basename(wheel_path))
-            shutil.copy(wheel_path, copied)
-            r = subprocess.run(
-                [
-                    "python3",
-                    "-m",
-                    "wheel",
-                    "tags",
-                    "--platform-tag",
-                    manylinux_tag,
-                    "--remove",
-                    copied,
-                ],
-            )
-
-        fail_if(r.returncode != 0, "auditwheel repair/addtag failed")
-    else:
-        p = subprocess.Popen(
-            ["python3", "setup.py", "bdist_wheel"],
-            env=wenv,
-        )
-        p.wait()
-        fail_if(p.returncode != 0, "setup.py failed")
-        cpdir("dist", FLAGS.dest_dir)
+    p = subprocess.Popen(
+        ["python3", "setup.py", "bdist_wheel"],
+        env=wenv,
+    )
+    p.wait()
+    fail_if(p.returncode != 0, "setup.py failed")
+    cpdir("dist", FLAGS.dest_dir)
 
     print("=== Output wheel file is in: {}".format(FLAGS.dest_dir))
     touch(os.path.join(FLAGS.dest_dir, "stamp.whl"))
