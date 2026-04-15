@@ -225,7 +225,7 @@ if __name__ == "__main__":
         sys.stdout.write(r.stdout)
         sys.stderr.write(r.stderr)
 
-        if r.returncode != 0 and "no ELF" in r.stdout:
+        if r.returncode != 0 and "no ELF" in r.stderr:
             # Pure Python wheel — no native extensions to bundle.
             # Fall back to auditwheel addtag to stamp the manylinux platform tag.
             print(f"=== Pure Python wheel, falling back to auditwheel addtag")
