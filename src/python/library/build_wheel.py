@@ -77,12 +77,6 @@ if __name__ == "__main__":
     parser.add_argument(
         "--dest-dir", type=str, required=True, help="Destination directory."
     )
-    parser.add_argument(
-        "--linux",
-        action="store_true",
-        required=False,
-        help="Include linux specific artifacts.",
-    )
     FLAGS = parser.parse_args()
 
     FLAGS.triton_version = None
@@ -110,9 +104,8 @@ if __name__ == "__main__":
         cpdir("tritonhttpclient", os.path.join(FLAGS.whl_dir, "tritonhttpclient"))
     if os.path.isdir("tritongrpcclient"):
         cpdir("tritongrpcclient", os.path.join(FLAGS.whl_dir, "tritongrpcclient"))
-    if FLAGS.linux:
-        if os.path.isdir("tritonshmutils"):
-            cpdir("tritonshmutils", os.path.join(FLAGS.whl_dir, "tritonshmutils"))
+    if os.path.isdir("tritonshmutils"):
+        cpdir("tritonshmutils", os.path.join(FLAGS.whl_dir, "tritonshmutils"))
 
     if os.path.isdir("tritonclient/grpc"):
         cpdir("tritonclient/grpc", os.path.join(FLAGS.whl_dir, "tritonclient/grpc"))
@@ -161,11 +154,12 @@ if __name__ == "__main__":
         os.path.join(FLAGS.whl_dir, "tritonclient/utils/_shared_memory_tensor.py"),
     )
 
-    if FLAGS.linux:
+    if os.path.isdir("tritonclient/utils/shared_memory"):
         cpdir(
             "tritonclient/utils/shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/shared_memory"),
         )
+    if os.path.isdir("tritonclient/utils/cuda_shared_memory"):
         cpdir(
             "tritonclient/utils/cuda_shared_memory",
             os.path.join(FLAGS.whl_dir, "tritonclient/utils/cuda_shared_memory"),
