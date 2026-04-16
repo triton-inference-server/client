@@ -110,12 +110,17 @@ if __name__ == "__main__":
             files={long_path: b"a"},
         )
     except InferenceServerException as e:
-        st = e.status() or ""
-        if "Invalid file path" not in st:
+        # TODO: [TRI-958] StatusCode.INVALID_ARGUMENT is more appropriate here
+        if e.status() != "StatusCode.INTERNAL":
             print(
-                "FAILED: expected 'Invalid file path' for oversized file path; got {!r}".format(
-                    st
-                )
+                "FAILED: expected status 'StatusCode.INTERNAL' for oversized file parameter, "
+                "got status={!r}".format(e.status())
+            )
+            sys.exit(1)
+        if "failed to poll from model repository" not in e.message():
+            print(
+                "FAILED: expected 'failed to poll from model repository' for oversized file parameter, "
+                "got message={!r}".format(e.message())
             )
             sys.exit(1)
     else:
