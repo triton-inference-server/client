@@ -81,8 +81,6 @@ platform_package_data = []
 data_files = [
     ("", ["LICENSE.txt"]),
 ]
-if (PLATFORM_FLAG != "any") and ("@TRITON_PACKAGE_PERF_ANALYZER@" == "ON"):
-    data_files += [("bin", ["perf_analyzer", "perf_client"])]
 
 setup(
     name="tritonclient",
