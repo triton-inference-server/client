@@ -1,0 +1,182 @@
+# Copyright 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# Multi-stage Conan-based manylinux wheel build for the Triton Python client.
+# Produces a manylinux_2_28 wheel compatible with any Linux distro with glibc >= 2.28.
+#
+# Base image: quay.io/pypa/manylinux_2_28_x86_64 (AlmaLinux 8).
+# Python 3.12 is pre-installed at /opt/python/cp312-cp312/.
+#
+# Build (from monorepo root):
+#   DOCKER_BUILDKIT=1 docker build \
+#     --secret id=conan_token,src=/path/to/artifactory_token.txt \
+#     --build-arg TRITON_CLIENT_REPO_SUBDIR=client \
+#     --build-arg TRITON_COMMON_REPO_SUBDIR=common \
+#     -f client/Dockerfile.sdk.manylinux .
+#
+# Extract the repaired wheel:
+#   docker run --rm -v $(pwd)/dist:/out <image> cp -r /workspace/dist/. /out/
+#
+
+# quay.io/pypa/manylinux_2_28_x86_64 is the official PyPA image based on AlmaLinux 8.
+# It provides Python 3.12 at /opt/python/cp312-cp312/ and auditwheel as a system tool.
+ARG BASE_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
+
+# Subdirectory paths relative to the Docker build context (monorepo root).
+ARG TRITON_CLIENT_REPO_SUBDIR=client
+ARG TRITON_COMMON_REPO_SUBDIR=common
+
+# Conan remote credentials (token supplied via Docker BuildKit secret).
+ARG CONAN_USER=triton-sdk
+ARG CONAN_REMOTE_NAME=sw-dl-triton-conan-local
+ARG CONAN_REMOTE_URL=https://artifactory.nvidia.com/artifactory/api/conan/sw-dl-triton-conan-local
+
+ARG NVIDIA_TRITON_SERVER_SDK_VERSION=unknown
+ARG NVIDIA_BUILD_ID=unknown
+
+# CMake preset and Conan profile to use for the manylinux build.
+# The preset disables examples and tests; the profile uses gcc-toolset-13 paths.
+ARG TRITON_CLIENT_PRESET=triton-client-release-cpu-manylinux-x86_64
+ARG CONAN_PROFILE=linux-gcc13-release-manylinux-x86_64
+
+############################################################################
+##  Build stage
+############################################################################
+
+FROM ${BASE_IMAGE} AS sdk_build
+
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+# gcc-toolset-13 provides GCC 13 on AlmaLinux 8 at /opt/rh/gcc-toolset-13/root/usr/bin/.
+# EPEL provides libb64-devel (base64 encoding used by the HTTP client).
+# ninja-build and numactl-devel are already present on the manylinux_2_28 image;
+# install them anyway — dnf is a no-op if already installed.
+RUN --mount=type=cache,target=/var/cache/dnf,sharing=locked \
+    dnf install -y --nodocs epel-release && \
+    dnf install -y --nodocs \
+        gcc-toolset-13 \
+        libb64-devel \
+        ninja-build \
+        numactl-devel
+
+# Put gcc-toolset-13 first on PATH so Conan and CMake detect it automatically.
+ENV PATH=/opt/rh/gcc-toolset-13/root/usr/bin:${PATH}
+ENV LD_LIBRARY_PATH=/opt/rh/gcc-toolset-13/root/usr/lib64:/opt/rh/gcc-toolset-13/root/usr/lib:${LD_LIBRARY_PATH}
+
+# Use the pre-built Python 3.12 that ships with the manylinux image.
+ARG PYTHON=/opt/python/cp312-cp312/bin/python3
+
+# Isolated build-time venv.  auditwheel is added here alongside Conan/CMake so
+# the repair step runs against the same Python used to build the wheel.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    ${PYTHON} -m venv /opt/build-venv && \
+    /opt/build-venv/bin/pip install \
+        "conan>=2.0,<3.0" \
+        "cmake>=3.31.8" \
+        "grpcio-tools<1.68" \
+        auditwheel
+
+ENV PATH=/opt/build-venv/bin:${PATH}
+
+ARG TRITON_CLIENT_REPO_SUBDIR
+ARG TRITON_COMMON_REPO_SUBDIR
+ARG TRITON_CLIENT_PRESET
+ARG CONAN_PROFILE
+ARG CONAN_USER
+ARG CONAN_REMOTE_NAME
+ARG CONAN_REMOTE_URL
+
+WORKDIR /workspace
+
+# ── Layer 1: Conan dependency resolution ──────────────────────────────────
+# Copy only the Conan manifest + profiles so this expensive layer is cached
+# as long as conanfile.py and the Conan profiles are unchanged.
+COPY ${TRITON_CLIENT_REPO_SUBDIR}/conanfile.py        client/conanfile.py
+COPY ${TRITON_CLIENT_REPO_SUBDIR}/conan/profiles/     client/conan/profiles/
+
+# Register the Artifactory remote (no credentials stored in this layer).
+RUN conan remote add ${CONAN_REMOTE_NAME} ${CONAN_REMOTE_URL}
+
+# Resolve and download all Conan packages.
+# The Artifactory token is mounted as a BuildKit secret and is never written
+# to any image layer.  Pass: --secret id=conan_token,src=/path/to/token.txt
+RUN --mount=type=secret,id=conan_token \
+    conan remote login ${CONAN_REMOTE_NAME} ${CONAN_USER} \
+        -p "$(cat /run/secrets/conan_token)" && \
+    conan install /workspace/client \
+        --profile:host=/workspace/client/conan/profiles/${CONAN_PROFILE} \
+        --profile:build=/workspace/client/conan/profiles/${CONAN_PROFILE} \
+        -c "tools.cmake:cmake_program=$(which cmake)" \
+        -o "&:enable_gpu=False" \
+        -o "&:enable_grpc=True" \
+        -o "&:enable_http=True" \
+        --build=missing \
+        -r ${CONAN_REMOTE_NAME} \
+        --output-folder=/workspace/client/build/${TRITON_CLIENT_PRESET}/conan && \
+    conan remote logout ${CONAN_REMOTE_NAME}
+
+# ── Layer 2: Full source + cmake build ────────────────────────────────────
+COPY ${TRITON_CLIENT_REPO_SUBDIR} client
+COPY ${TRITON_COMMON_REPO_SUBDIR} common
+
+# Configure, build, and install.
+RUN TRITON_VERSION=$(cat /workspace/client/TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    cmake --preset ${TRITON_CLIENT_PRESET} \
+          -S /workspace/client \
+          -DCMAKE_INSTALL_PREFIX=/workspace/install \
+          -DTRITON_VERSION=${TRITON_VERSION} && \
+    cmake --build --preset ${TRITON_CLIENT_PRESET} && \
+    cmake --install /workspace/client/build/${TRITON_CLIENT_PRESET} \
+          --prefix /workspace/install
+
+# ── Layer 3: auditwheel repair ────────────────────────────────────────────
+# Bundle shared-lib dependencies into the wheel and apply the manylinux_2_28
+# platform tag so it is installable on any distro with glibc >= 2.28.
+RUN auditwheel repair \
+        --plat manylinux_2_28_x86_64 \
+        --wheel-dir /workspace/dist \
+        "$(find /workspace/install/python/ -maxdepth 1 -name 'tritonclient-*linux*.whl')"
+
+############################################################################
+##  Distribution image — contains only the repaired wheel
+############################################################################
+
+FROM ${BASE_IMAGE}
+
+WORKDIR /workspace
+
+COPY --from=sdk_build /workspace/dist/ dist/
+
+ARG NVIDIA_TRITON_SERVER_SDK_VERSION
+ARG NVIDIA_BUILD_ID
+ENV NVIDIA_TRITON_SERVER_SDK_VERSION=${NVIDIA_TRITON_SERVER_SDK_VERSION}
+ENV NVIDIA_BUILD_ID=${NVIDIA_BUILD_ID}
+
+ENV NVIDIA_PRODUCT_NAME="Triton Client SDK (manylinux)"
+
+# Usage: docker run --rm -v $(pwd)/dist:/out <image> cp -r /workspace/dist/. /out/
+CMD ["find", "/workspace/dist", "-name", "*.whl", "-exec", "ls", "-lh", "{}", ";"]

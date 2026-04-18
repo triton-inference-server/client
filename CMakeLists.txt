@@ -67,154 +67,190 @@ endif()
 #
 # Dependencies
 #
-include(FetchContent)
 
-FetchContent_Declare(
-  repo-third-party
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/third_party.git
-  GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
-  GIT_SHALLOW ON
-)
-set(TRITON_THIRD_PARTY_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/third-party)
-FetchContent_MakeAvailable(repo-third-party)
+if(TRITON_SKIP_THIRD_PARTY_FETCH)
+  # Conan mode: all C++ deps come from Conan packages. Build sub-projects
+  # directly via add_subdirectory so the Conan toolchain is inherited.
 
-# Some libs are installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/lib64 instead
-# of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/lib on Centos
-set (LIB_DIR "lib")
-if(LINUX)
-  file(STRINGS "/etc/os-release" DISTRO_ID_LIKE REGEX "ID_LIKE")
-  if(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
-    set (LIB_DIR "lib64")
-  endif(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
-endif(LINUX)
+  # Add common once at the top level so both C++ and Python clients share the
+  # same triton-common-json / proto-py-library targets without duplicate definitions.
+  if(TRITON_COMMON_SOURCE_DIR)
+    set(TRITON_COMMON_ENABLE_JSON ON)
+    if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PYTHON_GRPC)
+      set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+      set(TRITON_COMMON_ENABLE_GRPC ON)
+    endif()
+    add_subdirectory(${TRITON_COMMON_SOURCE_DIR} triton-common-build)
+    # Compatibility shim so sub-projects that reference repo-common_SOURCE_DIR still resolve.
+    set(repo-common_SOURCE_DIR ${TRITON_COMMON_SOURCE_DIR})
+  endif()
 
-# Need to use ExternalProject for our builds so that we can get the
-# correct dependencies between our components and the ExternalProject
-# dependencies (found in the third_party repo)
-include(ExternalProject)
+  if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
+    add_subdirectory(src/c++)
+  endif()
 
-if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(TRITON_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/cc-clients/install)
+  if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
+    add_subdirectory(src/python)
+  endif()
+
+  if(TRITON_ENABLE_JAVA_HTTP)
+    add_subdirectory(src/java)
+  endif()
+
+  # Java client uses Maven (mvn clean install) internally; Maven and a JDK must be
+  # present in the build environment (see Dockerfile.sdk build stage).
+
 else()
-  set(TRITON_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
-endif()
+  # Legacy mode: fetch third_party from GitHub and build via ExternalProject.
+  include(FetchContent)
 
-set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "")
-if (OPENSSL_ROOT_DIR)
-  set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "-DOPENSSL_ROOT_DIR:PATH=${OPENSSL_ROOT_DIR}")
-endif()
-
-set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "")
-if (CMAKE_TOOLCHAIN_FILE)
-  set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}")
-endif()
-
-set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "")
-if (VCPKG_TARGET_TRIPLET)
-  set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "-DVCPKG_TARGET_TRIPLET:STRING=${VCPKG_TARGET_TRIPLET}")
-endif()
-
-# Location where protobuf-config.cmake will be installed varies by
-# platform
-if (WIN32)
-  set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/cmake")
-else()
-  set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/${LIB_DIR}/cmake/protobuf")
-endif()
-
-if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
-
-  set(_cc_client_depends re2)
-  if(${TRITON_ENABLE_CC_HTTP})
-    set(_cc_client_depends ${_cc_client_depends} curl)
-  endif() # TRITON_ENABLE_CC_HTTP
-  if(${TRITON_ENABLE_CC_GRPC})
-    set(_cc_client_depends ${_cc_client_depends} grpc protobuf)
-  endif() # TRITON_ENABLE_CC_GRPC
-
-  ExternalProject_Add(cc-clients
-    PREFIX cc-clients
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/c++"
-    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/cc-clients"
-    CMAKE_CACHE_ARGS
-      ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
-      ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
-      ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
-      -DCURL_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/${LIB_DIR}/cmake/CURL
-      -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
-      -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
-      -Dabsl_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/absl/${LIB_DIR}/cmake/absl
-      -Dre2_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/re2/${LIB_DIR}/cmake/re2
-      -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/${LIB_DIR}/cmake/c-ares
-      -DGTEST_ROOT:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/googletest
-      -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
-      -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
-      -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG}
-      -DTRITON_ENABLE_CC_HTTP:BOOL=${TRITON_ENABLE_CC_HTTP}
-      -DTRITON_ENABLE_CC_GRPC:BOOL=${TRITON_ENABLE_CC_GRPC}
-      -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
-      -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
-      -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
-      -DTRITON_ENABLE_ZLIB:BOOL=${TRITON_ENABLE_ZLIB}
-      -DTRITON_MIN_CXX_STANDARD:STRING=${TRITON_MIN_CXX_STANDARD}
-      -DLIB_DIR:STRING=${LIB_DIR}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
-    DEPENDS ${_cc_client_depends}
+  FetchContent_Declare(
+    repo-third-party
+    GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/third_party.git
+    GIT_TAG ${TRITON_THIRD_PARTY_REPO_TAG}
+    GIT_SHALLOW ON
   )
-endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC
+  set(TRITON_THIRD_PARTY_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/third-party)
+  FetchContent_MakeAvailable(repo-third-party)
 
-if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
-  set(_py_client_depends re2)
-  if(${TRITON_ENABLE_PYTHON_GRPC})
-    set(_py_client_depends ${_py_client_depends} grpc protobuf)
-  endif() # TRITON_ENABLE_PYTHON_GRPC
+  # Some libs are installed to ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/lib64 instead
+  # of ${TRITON_THIRD_PARTY_INSTALL_PREFIX}/lib on Centos
+  set (LIB_DIR "lib")
+  if(LINUX)
+    file(STRINGS "/etc/os-release" DISTRO_ID_LIKE REGEX "ID_LIKE")
+    if(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
+      set (LIB_DIR "lib64")
+    endif(${DISTRO_ID_LIKE} MATCHES "rhel|centos")
+  endif(LINUX)
 
-  ExternalProject_Add(python-clients
-    PREFIX python-clients
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/python"
-    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/python-clients"
-    CMAKE_CACHE_ARGS
-      ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
-      ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
-      ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
-      -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
-      -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
-      -Dabsl_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/absl/${LIB_DIR}/cmake/absl
-      -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/${LIB_DIR}/cmake/c-ares
-      -Dre2_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/re2/${LIB_DIR}/cmake/re2
-      -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
-      -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
-      -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG}
-      -DTRITON_VERSION:STRING=${TRITON_VERSION}
-      -DTRITON_ENABLE_PYTHON_HTTP:BOOL=${TRITON_ENABLE_PYTHON_HTTP}
-      -DTRITON_ENABLE_PYTHON_GRPC:BOOL=${TRITON_ENABLE_PYTHON_GRPC}
-      -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
-      -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
-      -DTRITON_PACKAGE_PERF_ANALYZER:BOOL=${TRITON_PACKAGE_PERF_ANALYZER}
-      -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
-    DEPENDS ${_py_client_depends}
-  )
-endif() # TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC
+  # Need to use ExternalProject for our builds so that we can get the
+  # correct dependencies between our components and the ExternalProject
+  # dependencies (found in the third_party repo)
+  include(ExternalProject)
 
-if(TRITON_ENABLE_JAVA_HTTP)
-  ExternalProject_Add(java-clients
-    PREFIX java-clients
-    SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/java"
-    BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/java-clients"
-    CMAKE_CACHE_ARGS
-      ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
-      ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
-      ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
-      -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
-      -DTRITON_VERSION:STRING=${TRITON_VERSION}
-      -DTRITON_ENABLE_JAVA_HTTP:BOOL=${TRITON_ENABLE_JAVA_HTTP}
-      -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
-      -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
-      -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
-    INSTALL_COMMAND ""
-  )
+  if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
+    set(TRITON_INSTALL_PREFIX ${CMAKE_CURRENT_BINARY_DIR}/cc-clients/install)
+  else()
+    set(TRITON_INSTALL_PREFIX ${CMAKE_INSTALL_PREFIX})
+  endif()
 
-endif() # TRITON_ENABLE_JAVA_HTTP
+  set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "")
+  if (OPENSSL_ROOT_DIR)
+    set(_CMAKE_ARGS_OPENSSL_ROOT_DIR "-DOPENSSL_ROOT_DIR:PATH=${OPENSSL_ROOT_DIR}")
+  endif()
+
+  set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "")
+  if (CMAKE_TOOLCHAIN_FILE)
+    set(_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE "-DCMAKE_TOOLCHAIN_FILE:PATH=${CMAKE_TOOLCHAIN_FILE}")
+  endif()
+
+  set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "")
+  if (VCPKG_TARGET_TRIPLET)
+    set(_CMAKE_ARGS_VCPKG_TARGET_TRIPLET "-DVCPKG_TARGET_TRIPLET:STRING=${VCPKG_TARGET_TRIPLET}")
+  endif()
+
+  # Location where protobuf-config.cmake will be installed varies by platform
+  if (WIN32)
+    set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/cmake")
+  else()
+    set(_FINDPACKAGE_PROTOBUF_CONFIG_DIR "${TRITON_THIRD_PARTY_INSTALL_PREFIX}/protobuf/${LIB_DIR}/cmake/protobuf")
+  endif()
+
+  if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
+
+    set(_cc_client_depends re2)
+    if(${TRITON_ENABLE_CC_HTTP})
+      set(_cc_client_depends ${_cc_client_depends} curl)
+    endif() # TRITON_ENABLE_CC_HTTP
+    if(${TRITON_ENABLE_CC_GRPC})
+      set(_cc_client_depends ${_cc_client_depends} grpc protobuf)
+    endif() # TRITON_ENABLE_CC_GRPC
+
+    ExternalProject_Add(cc-clients
+      PREFIX cc-clients
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/c++"
+      BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/cc-clients"
+      CMAKE_CACHE_ARGS
+        ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
+        ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
+        ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+        -DCURL_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/curl/${LIB_DIR}/cmake/CURL
+        -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
+        -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
+        -Dabsl_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/absl/${LIB_DIR}/cmake/absl
+        -Dre2_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/re2/${LIB_DIR}/cmake/re2
+        -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/${LIB_DIR}/cmake/c-ares
+        -DGTEST_ROOT:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/googletest
+        -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
+        -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
+        -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG}
+        -DTRITON_ENABLE_CC_HTTP:BOOL=${TRITON_ENABLE_CC_HTTP}
+        -DTRITON_ENABLE_CC_GRPC:BOOL=${TRITON_ENABLE_CC_GRPC}
+        -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
+        -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+        -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
+        -DTRITON_ENABLE_ZLIB:BOOL=${TRITON_ENABLE_ZLIB}
+        -DTRITON_MIN_CXX_STANDARD:STRING=${TRITON_MIN_CXX_STANDARD}
+        -DLIB_DIR:STRING=${LIB_DIR}
+        -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
+      DEPENDS ${_cc_client_depends}
+    )
+  endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC
+
+  if(TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC)
+    set(_py_client_depends re2)
+    if(${TRITON_ENABLE_PYTHON_GRPC})
+      set(_py_client_depends ${_py_client_depends} grpc protobuf)
+    endif() # TRITON_ENABLE_PYTHON_GRPC
+
+    ExternalProject_Add(python-clients
+      PREFIX python-clients
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/python"
+      BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/python-clients"
+      CMAKE_CACHE_ARGS
+        ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
+        ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
+        ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+        -DProtobuf_DIR:PATH=${_FINDPACKAGE_PROTOBUF_CONFIG_DIR}
+        -DgRPC_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/grpc/lib/cmake/grpc
+        -Dabsl_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/absl/${LIB_DIR}/cmake/absl
+        -Dc-ares_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/c-ares/${LIB_DIR}/cmake/c-ares
+        -Dre2_DIR:PATH=${TRITON_THIRD_PARTY_INSTALL_PREFIX}/re2/${LIB_DIR}/cmake/re2
+        -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
+        -DTRITON_COMMON_REPO_TAG:STRING=${TRITON_COMMON_REPO_TAG}
+        -DTRITON_CORE_REPO_TAG:STRING=${TRITON_CORE_REPO_TAG}
+        -DTRITON_VERSION:STRING=${TRITON_VERSION}
+        -DTRITON_ENABLE_PYTHON_HTTP:BOOL=${TRITON_ENABLE_PYTHON_HTTP}
+        -DTRITON_ENABLE_PYTHON_GRPC:BOOL=${TRITON_ENABLE_PYTHON_GRPC}
+        -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
+        -DTRITON_ENABLE_TESTS:BOOL=${TRITON_ENABLE_TESTS}
+        -DTRITON_PACKAGE_PERF_ANALYZER:BOOL=${TRITON_PACKAGE_PERF_ANALYZER}
+        -DTRITON_ENABLE_GPU:BOOL=${TRITON_ENABLE_GPU}
+        -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
+      DEPENDS ${_py_client_depends}
+    )
+  endif() # TRITON_ENABLE_PYTHON_HTTP OR TRITON_ENABLE_PYTHON_GRPC
+
+  if(TRITON_ENABLE_JAVA_HTTP)
+    ExternalProject_Add(java-clients
+      PREFIX java-clients
+      SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/src/java"
+      BINARY_DIR "${CMAKE_CURRENT_BINARY_DIR}/java-clients"
+      CMAKE_CACHE_ARGS
+        ${_CMAKE_ARGS_OPENSSL_ROOT_DIR}
+        ${_CMAKE_ARGS_CMAKE_TOOLCHAIN_FILE}
+        ${_CMAKE_ARGS_VCPKG_TARGET_TRIPLET}
+        -DTRITON_REPO_ORGANIZATION:STRING=${TRITON_REPO_ORGANIZATION}
+        -DTRITON_VERSION:STRING=${TRITON_VERSION}
+        -DTRITON_ENABLE_JAVA_HTTP:BOOL=${TRITON_ENABLE_JAVA_HTTP}
+        -DTRITON_ENABLE_EXAMPLES:BOOL=${TRITON_ENABLE_EXAMPLES}
+        -DCMAKE_BUILD_TYPE:STRING=${CMAKE_BUILD_TYPE}
+        -DCMAKE_INSTALL_PREFIX:PATH=${TRITON_INSTALL_PREFIX}
+      INSTALL_COMMAND ""
+    )
+
+  endif() # TRITON_ENABLE_JAVA_HTTP
+
+endif() # TRITON_SKIP_THIRD_PARTY_FETCH

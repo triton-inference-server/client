@@ -1,0 +1,105 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": { "major": 3, "minor": 31, "patch": 8 },
+  "$comment": "Standalone Conan build presets for triton-client. For integrated monorepo builds see server/cmake/presets/CMakePresets.TritonClient.*.json.",
+  "configurePresets": [
+    {
+      "name": "conan-base",
+      "hidden": true,
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/${presetName}",
+      "toolchainFile": "${sourceDir}/build/${presetName}/conan/generators/conan_toolchain.cmake",
+      "cacheVariables": { "CMAKE_EXPORT_COMPILE_COMMANDS": "ON" }
+    },
+    {
+      "name": "triton-client-release-cpu-ubuntu-x86_64",
+      "inherits": "conan-base",
+      "displayName": "TritonClient — Release, CPU-only, Ubuntu, x86_64",
+      "description": "CPU-only client library build for Ubuntu Linux on x86_64. No CUDA required.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":           "Release",
+        "TRITON_ENABLE_GPU":          "OFF",
+        "TRITON_ENABLE_CC_HTTP":      "ON",
+        "TRITON_ENABLE_CC_GRPC":      "ON",
+        "TRITON_ENABLE_PYTHON_HTTP":  "ON",
+        "TRITON_ENABLE_PYTHON_GRPC":  "ON",
+        "TRITON_ENABLE_JAVA_HTTP":    "ON",
+        "TRITON_ENABLE_EXAMPLES":     "ON",
+        "TRITON_ENABLE_TESTS":        "ON"
+      }
+    },
+    {
+      "name": "triton-client-release-cuda-ubuntu-x86_64",
+      "inherits": "conan-base",
+      "displayName": "TritonClient — Release, CUDA, Ubuntu, x86_64",
+      "description": "GPU-enabled client library build for Ubuntu Linux on x86_64.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":           "Release",
+        "TRITON_ENABLE_GPU":          "ON",
+        "TRITON_ENABLE_CC_HTTP":      "ON",
+        "TRITON_ENABLE_CC_GRPC":      "ON",
+        "TRITON_ENABLE_PYTHON_HTTP":  "ON",
+        "TRITON_ENABLE_PYTHON_GRPC":  "ON",
+        "TRITON_ENABLE_JAVA_HTTP":    "ON",
+        "TRITON_ENABLE_EXAMPLES":     "ON",
+        "TRITON_ENABLE_TESTS":        "ON",
+        "CMAKE_CUDA_RUNTIME_LIBRARY": "Shared"
+      }
+    },
+    {
+      "name": "triton-client-release-cpu-ubuntu-aarch64",
+      "inherits": "conan-base",
+      "displayName": "TritonClient — Release, CPU-only, Ubuntu, aarch64",
+      "description": "CPU-only client library build for Ubuntu Linux on aarch64 (Graviton, Grace).",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":           "Release",
+        "TRITON_ENABLE_GPU":          "OFF",
+        "TRITON_ENABLE_CC_HTTP":      "ON",
+        "TRITON_ENABLE_CC_GRPC":      "ON",
+        "TRITON_ENABLE_PYTHON_HTTP":  "ON",
+        "TRITON_ENABLE_PYTHON_GRPC":  "ON",
+        "TRITON_ENABLE_JAVA_HTTP":    "ON",
+        "TRITON_ENABLE_EXAMPLES":     "ON",
+        "TRITON_ENABLE_TESTS":        "ON"
+      }
+    },
+    {
+      "name": "triton-client-release-cpu-manylinux-x86_64",
+      "inherits": "conan-base",
+      "displayName": "TritonClient — Release, CPU-only, manylinux, x86_64",
+      "description": "CPU-only manylinux wheel build for broad pip compatibility.",
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE":          "Release",
+        "TRITON_ENABLE_GPU":         "OFF",
+        "TRITON_ENABLE_CC_HTTP":     "ON",
+        "TRITON_ENABLE_CC_GRPC":     "ON",
+        "TRITON_ENABLE_PYTHON_HTTP": "ON",
+        "TRITON_ENABLE_PYTHON_GRPC": "ON",
+        "TRITON_ENABLE_EXAMPLES":    "OFF",
+        "TRITON_ENABLE_TESTS":       "OFF"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "triton-client-release-cpu-ubuntu-x86_64",    "configurePreset": "triton-client-release-cpu-ubuntu-x86_64",    "jobs": 8 },
+    { "name": "triton-client-release-cuda-ubuntu-x86_64",   "configurePreset": "triton-client-release-cuda-ubuntu-x86_64",   "jobs": 8 },
+    { "name": "triton-client-release-cpu-ubuntu-aarch64",   "configurePreset": "triton-client-release-cpu-ubuntu-aarch64",   "jobs": 8 },
+    { "name": "triton-client-release-cpu-manylinux-x86_64", "configurePreset": "triton-client-release-cpu-manylinux-x86_64", "jobs": 8 }
+  ],
+  "testPresets": [
+    {
+      "name": "triton-client-release-cpu-ubuntu-x86_64",
+      "configurePreset": "triton-client-release-cpu-ubuntu-x86_64",
+      "filter": { "exclude": { "label": "requires-gpu" } }
+    },
+    {
+      "name": "triton-client-release-cuda-ubuntu-x86_64",
+      "configurePreset": "triton-client-release-cuda-ubuntu-x86_64"
+    },
+    {
+      "name": "triton-client-release-cpu-ubuntu-aarch64",
+      "configurePreset": "triton-client-release-cpu-ubuntu-aarch64",
+      "filter": { "exclude": { "label": "requires-gpu" } }
+    }
+  ]
+}

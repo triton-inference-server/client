@@ -49,21 +49,28 @@ endif()
 #
 # Dependencies
 #
-include(FetchContent)
 
-FetchContent_Declare(
-  repo-common
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
-  GIT_SHALLOW ON
-)
+if(TRITON_COMMON_SOURCE_DIR)
+  # Conan mode: common (proto-py-library, grpc-service-py-library) already
+  # added by the parent CMakeLists.txt via add_subdirectory(${TRITON_COMMON_SOURCE_DIR}).
+else()
+  # Legacy mode: fetch repo-common from GitHub.
+  include(FetchContent)
 
-if(TRITON_ENABLE_PYTHON_GRPC)
-  set(TRITON_COMMON_ENABLE_PROTOBUF ON)
-  set(TRITON_COMMON_ENABLE_GRPC ON)
-endif() # TRITON_ENABLE_PYTHON_GRPC
+  FetchContent_Declare(
+    repo-common
+    GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
+    GIT_TAG ${TRITON_COMMON_REPO_TAG}
+    GIT_SHALLOW ON
+  )
 
-FetchContent_MakeAvailable(repo-common)
+  if(TRITON_ENABLE_PYTHON_GRPC)
+    set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+    set(TRITON_COMMON_ENABLE_GRPC ON)
+  endif() # TRITON_ENABLE_PYTHON_GRPC
+
+  FetchContent_MakeAvailable(repo-common)
+endif()
 
 #
 # CUDA
