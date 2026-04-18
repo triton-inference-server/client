@@ -1,0 +1,314 @@
+# Copyright 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+#
+# Redistribution and use in source and binary forms, with or without
+# modification, are permitted provided that the following conditions
+# are met:
+#  * Redistributions of source code must retain the above copyright
+#    notice, this list of conditions and the following disclaimer.
+#  * Redistributions in binary form must reproduce the above copyright
+#    notice, this list of conditions and the following disclaimer in the
+#    documentation and/or other materials provided with the distribution.
+#  * Neither the name of NVIDIA CORPORATION nor the names of its
+#    contributors may be used to endorse or promote products derived
+#    from this software without specific prior written permission.
+#
+# THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS ``AS IS'' AND ANY
+# EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+# IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR
+# PURPOSE ARE DISCLAIMED.  IN NO EVENT SHALL THE COPYRIGHT OWNER OR
+# CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL,
+# EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO,
+# PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+# PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY
+# OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+# (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+# OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#
+# Multi-stage Conan-based build of the Triton Client SDK.
+# Uses isolated Python 3.12 virtual environments — no system pip installs.
+# Designed for parity with server/Dockerfile.sdk (nvcr.io/nvidia/tritonserver:*-py3-sdk).
+#
+# Build (CPU, from monorepo root):
+#   DOCKER_BUILDKIT=1 docker build \
+#     --secret id=conan_token,src=/path/to/artifactory_token.txt \
+#     --build-arg TRITON_CLIENT_REPO_SUBDIR=client \
+#     --build-arg TRITON_COMMON_REPO_SUBDIR=common \
+#     --build-arg TRITON_SERVER_REPO_SUBDIR=server \
+#     -f client/Dockerfile.sdk .
+#
+# Build (GPU):
+#   ... --build-arg TRITON_ENABLE_GPU=ON \
+#       --build-arg TRITON_CLIENT_PRESET=triton-client-release-cuda-ubuntu-x86_64 ...
+#
+
+ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver:26.03-py3-min
+
+# Subdirectory paths relative to the Docker build context (monorepo root).
+ARG TRITON_CLIENT_REPO_SUBDIR=client
+ARG TRITON_COMMON_REPO_SUBDIR=common
+ARG TRITON_SERVER_REPO_SUBDIR=server
+
+# Preset selects the platform / GPU variant.
+# CPU:  triton-client-release-cpu-ubuntu-x86_64
+# GPU:  triton-client-release-cuda-ubuntu-x86_64
+ARG TRITON_CLIENT_PRESET=triton-client-release-cpu-ubuntu-x86_64
+
+ARG TRITON_ENABLE_GPU=OFF
+ARG DCGM_VERSION=4.5.3-1
+
+# Java API bindings parameters (parity with server/Dockerfile.sdk).
+ARG JAVA_BINDINGS_MAVEN_VERSION=3.8.4
+ARG JAVA_BINDINGS_JAVACPP_PRESETS_TAG=1.5.8
+
+# Model Analyzer — installed only when TRITON_MODEL_ANALYZER_REPO_TAG is set.
+ARG TRITON_REPO_ORGANIZATION=http://github.com/triton-inference-server
+ARG TRITON_CORE_REPO_TAG=main
+ARG TRITON_MODEL_ANALYZER_REPO_TAG=
+
+# Conan remote credentials (token supplied via Docker BuildKit secret).
+ARG CONAN_USER=triton-sdk
+ARG CONAN_REMOTE_NAME=sw-dl-triton-conan-local
+ARG CONAN_REMOTE_URL=https://artifactory.nvidia.com/artifactory/api/conan/sw-dl-triton-conan-local
+
+ARG NVIDIA_TRITON_SERVER_SDK_VERSION=unknown
+ARG NVIDIA_BUILD_ID=unknown
+
+############################################################################
+##  Build stage
+############################################################################
+
+FROM ${BASE_IMAGE} AS sdk_build
+
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ARG DEBIAN_FRONTEND=noninteractive
+
+# C++ build toolchain + Java (for Java API bindings) + Python 3.12 dev headers.
+# python3.12-venv provides the venv module used to create the isolated build env.
+# Prefer GCC-13 so the Conan profile and the compiler in use agree.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+            build-essential \
+            ca-certificates \
+            gcc-13 \
+            g++-13 \
+            git \
+            libb64-dev \
+            libnuma-dev \
+            libssl-dev \
+            maven \
+            ninja-build \
+            openjdk-11-jdk \
+            pkg-config \
+            python3.12 \
+            python3.12-dev \
+            python3.12-venv && \
+    update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-13 100 && \
+    update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-13 100
+
+# Isolated build-time venv — Conan, CMake, and grpcio-tools live here only.
+# Nothing is installed into the system Python.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    python3.12 -m venv /opt/build-venv && \
+    /opt/build-venv/bin/pip install \
+        "conan>=2.0,<3.0" \
+        "cmake>=3.31.8" \
+        "grpcio-tools<1.68"
+
+ENV PATH=/opt/build-venv/bin:${PATH}
+
+ARG TRITON_CLIENT_REPO_SUBDIR
+ARG TRITON_COMMON_REPO_SUBDIR
+ARG TRITON_CLIENT_PRESET
+ARG TRITON_ENABLE_GPU
+ARG CONAN_USER
+ARG CONAN_REMOTE_NAME
+ARG CONAN_REMOTE_URL
+
+WORKDIR /workspace
+
+# ── Layer 1: Conan dependency resolution ──────────────────────────────────
+# Copy only the Conan manifest + profiles so this expensive layer is cached
+# as long as conanfile.py and the Conan profiles are unchanged.
+COPY ${TRITON_CLIENT_REPO_SUBDIR}/conanfile.py        client/conanfile.py
+COPY ${TRITON_CLIENT_REPO_SUBDIR}/conan/profiles/     client/conan/profiles/
+
+# Register the Artifactory remote (no credentials stored in this layer).
+RUN conan remote add ${CONAN_REMOTE_NAME} ${CONAN_REMOTE_URL}
+
+# Resolve and download all Conan packages.
+# The Artifactory token is mounted as a BuildKit secret and is never written
+# to any image layer.  Pass: --secret id=conan_token,src=/path/to/token.txt
+RUN --mount=type=secret,id=conan_token \
+    CONAN_GPU=$([ "${TRITON_ENABLE_GPU}" = "ON" ] && echo "True" || echo "False") && \
+    conan remote login ${CONAN_REMOTE_NAME} ${CONAN_USER} \
+        -p "$(cat /run/secrets/conan_token)" && \
+    conan install /workspace/client \
+        --profile:host=/workspace/client/conan/profiles/linux-gcc13-release-x86_64 \
+        --profile:build=/workspace/client/conan/profiles/linux-gcc13-release-x86_64 \
+        -c "tools.cmake:cmake_program=$(which cmake)" \
+        -o "&:enable_gpu=${CONAN_GPU}" \
+        -o "&:enable_grpc=True" \
+        -o "&:enable_http=True" \
+        --build=missing \
+        -r ${CONAN_REMOTE_NAME} \
+        --output-folder=/workspace/client/build/${TRITON_CLIENT_PRESET}/conan && \
+    conan remote logout ${CONAN_REMOTE_NAME}
+
+# ── Layer 2: Full source + cmake build ────────────────────────────────────
+# Copy the full source trees now that Conan deps are cached.
+COPY ${TRITON_CLIENT_REPO_SUBDIR} client
+COPY ${TRITON_COMMON_REPO_SUBDIR} common
+
+# Configure, build, and install into /workspace/install.
+RUN TRITON_VERSION=$(cat /workspace/client/TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    cmake --preset ${TRITON_CLIENT_PRESET} \
+          -S /workspace/client \
+          -DCMAKE_INSTALL_PREFIX=/workspace/install \
+          -DTRITON_VERSION=${TRITON_VERSION} && \
+    cmake --build --preset ${TRITON_CLIENT_PRESET} && \
+    cmake --install /workspace/client/build/${TRITON_CLIENT_PRESET} \
+          --prefix /workspace/install
+
+# ── Layer 3: Java API bindings ────────────────────────────────────────────
+# Parity with server/Dockerfile.sdk; amd64 only (javacpp presets are x86_64).
+ARG TARGETPLATFORM
+ARG JAVA_BINDINGS_MAVEN_VERSION
+ARG JAVA_BINDINGS_JAVACPP_PRESETS_TAG
+ARG TRITON_CORE_REPO_TAG
+ARG TRITON_REPO_ORGANIZATION
+
+RUN if [ "${TARGETPLATFORM:-}" = "linux/amd64" ] || \
+       ([ -z "${TARGETPLATFORM:-}" ] && [ "$(uname -m)" = "x86_64" ]); then \
+        source /workspace/client/src/java-api-bindings/scripts/install_dependencies_and_build.sh \
+            --maven-version "${JAVA_BINDINGS_MAVEN_VERSION}" \
+            --core-tag "${TRITON_CORE_REPO_TAG}" \
+            --javacpp-tag "${JAVA_BINDINGS_JAVACPP_PRESETS_TAG}" \
+            --jar-install-path /workspace/install/java-api-bindings; \
+    fi
+
+############################################################################
+##  SDK container
+############################################################################
+
+FROM ${BASE_IMAGE}
+
+SHELL ["/bin/bash", "-euo", "pipefail", "-c"]
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG DCGM_VERSION
+ARG TRITON_ENABLE_GPU
+ARG TRITON_SERVER_REPO_SUBDIR
+
+# Runtime system packages — aligned with server/Dockerfile.sdk.
+# python3.12-venv is required to create the isolated runtime venv below.
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && \
+    apt-get install -y --no-install-recommends \
+            curl \
+            default-jdk \
+            gperf \
+            libb64-dev \
+            libgoogle-perftools-dev \
+            libopencv-core-dev \
+            libopencv-dev \
+            libssl-dev \
+            maven \
+            perl \
+            python3-pdfkit \
+            python3.12 \
+            python3.12-dev \
+            python3.12-venv
+
+# Isolated runtime venv — only packages needed to run client examples / tests.
+RUN python3.12 -m venv /opt/venv-tritonclient
+
+ENV PATH=/opt/venv-tritonclient/bin:${PATH}
+
+# Compatibility: many example scripts call 'python' or 'python3'.
+RUN ln -sf "$(which python3.12)" /usr/local/bin/python && \
+    ln -sf "$(which python3.12)" /usr/local/bin/python3
+
+WORKDIR /workspace
+
+# Copy built artifacts from the build stage.
+COPY --from=sdk_build /workspace/client/TRITON_VERSION client/TRITON_VERSION
+COPY --from=sdk_build /workspace/install/              install/
+
+# Create the versioned client tarball (same convention as server/Dockerfile.sdk).
+RUN cd install && \
+    VERSION=$(cat /workspace/client/TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    tar zcf /workspace/v${VERSION}.clients.tar.gz *
+
+# QA infrastructure — parity with server/Dockerfile.sdk.
+RUN mkdir -p qa
+COPY ${TRITON_SERVER_REPO_SUBDIR}/qa/L0_sdk                 qa/L0_sdk
+COPY ${TRITON_SERVER_REPO_SUBDIR}/qa/L0_client_build_variants qa/L0_client_build_variants
+COPY ${TRITON_SERVER_REPO_SUBDIR}/qa/images/mug.jpg          images/mug.jpg
+
+# Python client unit tests.
+COPY --from=sdk_build /workspace/client/src/python/library/tests/ \
+     qa/python_client_unit_tests/
+
+# NVIDIA DLC license document.
+COPY ${TRITON_SERVER_REPO_SUBDIR}/NVIDIA_Deep_Learning_Container_License.pdf .
+
+# Install the Python client wheel and its optional runtime dependencies.
+# attrdict is included for parity with server/Dockerfile.sdk (used by quickstart examples).
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install \
+        "grpcio<1.68" \
+        "grpcio-tools<1.68" \
+        "numpy<2" \
+        attrdict \
+        pdfkit \
+        pillow \
+        genai-perf && \
+    find install/python/ -maxdepth 1 -type f -name "tritonclient-*linux*.whl" \
+         | xargs printf -- '%s[all]' | xargs pip install --upgrade
+
+# Install Model Analyzer when a repo tag is supplied.
+ARG TRITON_MODEL_ANALYZER_REPO_TAG
+ARG TRITON_REPO_ORGANIZATION
+RUN if [ -n "${TRITON_MODEL_ANALYZER_REPO_TAG:-}" ]; then \
+        pip install "git+${TRITON_REPO_ORGANIZATION}/model_analyzer@${TRITON_MODEL_ANALYZER_REPO_TAG}"; \
+    fi
+
+# Install DCGM for GPU-enabled images.
+RUN if [ "${TRITON_ENABLE_GPU}" = "ON" ]; then \
+        if [ "$(uname -m)" = "x86_64" ]; then arch="x86_64"; else arch="sbsa"; fi && \
+        curl -fsSL -o /tmp/cuda-keyring.deb \
+            "https://developer.download.nvidia.com/compute/cuda/repos/ubuntu2404/${arch}/cuda-keyring_1.1-1_all.deb" && \
+        apt-get install -y /tmp/cuda-keyring.deb && \
+        rm /tmp/cuda-keyring.deb && \
+        apt-get update && \
+        apt-get install -y --no-install-recommends \
+               datacenter-gpu-manager-4-core=1:${DCGM_VERSION} \
+               datacenter-gpu-manager-4-dev=1:${DCGM_VERSION} && \
+        rm -rf /var/lib/apt/lists/*; \
+    fi
+
+# Entrypoint banner — parity with server/Dockerfile.sdk.
+COPY ${TRITON_SERVER_REPO_SUBDIR}/docker/entrypoint.d/ /opt/nvidia/entrypoint.d/
+RUN sed 's/Server/Server SDK/' /opt/nvidia/entrypoint.d/10-banner.txt | \
+    sed 's/^===/=======/' > /opt/nvidia/entrypoint.d/10-banner.new && \
+    mv /opt/nvidia/entrypoint.d/10-banner.new /opt/nvidia/entrypoint.d/10-banner.txt
+
+ENV NVIDIA_PRODUCT_NAME="Triton Server SDK"
+
+ARG NVIDIA_TRITON_SERVER_SDK_VERSION
+ARG NVIDIA_BUILD_ID
+ENV NVIDIA_TRITON_SERVER_SDK_VERSION=${NVIDIA_TRITON_SERVER_SDK_VERSION}
+ENV NVIDIA_BUILD_ID=${NVIDIA_BUILD_ID}
+
+ENV PATH=/workspace/install/bin:${PATH}
+ENV LD_LIBRARY_PATH=/workspace/install/lib:${LD_LIBRARY_PATH}
+
+# DLIS-3631: needed by Perf Analyzer CI.
+ENV LD_LIBRARY_PATH=/opt/hpcx/ompi/lib:${LD_LIBRARY_PATH}
+
+ENV TCMALLOC_RELEASE_RATE=200
