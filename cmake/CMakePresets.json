@@ -1,7 +1,6 @@
 {
   "version": 6,
   "cmakeMinimumRequired": { "major": 3, "minor": 31, "patch": 8 },
-  "$comment": "Standalone Conan build presets for triton-client. For integrated monorepo builds see server/cmake/presets/CMakePresets.TritonClient.*.json.",
   "configurePresets": [
     {
       "name": "conan-base",
