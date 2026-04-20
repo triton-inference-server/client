@@ -140,6 +140,15 @@ if(TRITON_ENABLE_CC_GRPC)
   include_directories($<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
 endif() # TRITON_ENABLE_CC_GRPC
 
+# RapidJSON headers are used via json_utils.h which is compiled directly into
+# several example executables via $<TARGET_OBJECTS:json-utils-library>.
+# Use include_directories() here so the path is inherited by all subdirs
+# (library/, examples/, tests/), matching the pattern used for protobuf above.
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_EXAMPLES)
+  find_package(RapidJSON CONFIG REQUIRED)
+  include_directories(${RapidJSON_INCLUDE_DIRS})
+endif()
+
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
   add_subdirectory(library)
 endif() # TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC
