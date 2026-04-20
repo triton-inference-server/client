@@ -97,6 +97,7 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
             g++-13 \
             git \
             libb64-dev \
+            libopencv-dev \
             libnuma-dev \
             libssl-dev \
             maven \
