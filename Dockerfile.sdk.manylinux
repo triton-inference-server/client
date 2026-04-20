@@ -144,13 +144,14 @@ COPY ${TRITON_CLIENT_REPO_SUBDIR} client
 COPY ${TRITON_COMMON_REPO_SUBDIR} common
 
 # Configure, build, and install.
-RUN TRITON_VERSION=$(cat /workspace/client/TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+# cmake --preset / --build --preset resolve CMakePresets.json from CWD.
+RUN cd /workspace/client && \
+    TRITON_VERSION=$(cat TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
     cmake --preset ${TRITON_CLIENT_PRESET} \
-          -S /workspace/client \
           -DCMAKE_INSTALL_PREFIX=/workspace/install \
           -DTRITON_VERSION=${TRITON_VERSION} && \
     cmake --build --preset ${TRITON_CLIENT_PRESET} && \
-    cmake --install /workspace/client/build/${TRITON_CLIENT_PRESET} \
+    cmake --install build/${TRITON_CLIENT_PRESET} \
           --prefix /workspace/install
 
 # ── Layer 3: auditwheel repair ────────────────────────────────────────────
