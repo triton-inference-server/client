@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -98,6 +98,37 @@ if __name__ == "__main__":
     triton_client.unload_model(model_name)
     if triton_client.is_model_ready(model_name):
         print("FAILED : Unload Model")
+        sys.exit(1)
+
+    # Single path component longer than NAME_MAX must be rejected without
+    # terminating the server (invalid-arg response, not process abort).
+    long_path = "file:" + ("A" * 256)
+    try:
+        triton_client.load_model(
+            model_name,
+            config="{}",
+            files={long_path: b"a"},
+        )
+    except InferenceServerException as e:
+        # TODO: [TRI-958] StatusCode.INVALID_ARGUMENT is more appropriate here
+        if e.status() != "StatusCode.INTERNAL":
+            print(
+                "FAILED: expected status 'StatusCode.INTERNAL' for oversized file parameter, "
+                "got status={!r}".format(e.status())
+            )
+            sys.exit(1)
+        if "failed to poll from model repository" not in e.message():
+            print(
+                "FAILED: expected 'failed to poll from model repository' for oversized file parameter, "
+                "got message={!r}".format(e.message())
+            )
+            sys.exit(1)
+    else:
+        print("FAILED: expected error for oversized file parameter")
+        sys.exit(1)
+
+    if not triton_client.is_server_live():
+        print("FAILED: server not live after rejected load")
         sys.exit(1)
 
     # Trying to load wrong model name should emit exception
