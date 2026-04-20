@@ -81,8 +81,12 @@ if(TRITON_SKIP_THIRD_PARTY_FETCH)
       set(TRITON_COMMON_ENABLE_GRPC ON)
     endif()
     add_subdirectory(${TRITON_COMMON_SOURCE_DIR} triton-common-build)
-    # Compatibility shim so sub-projects that reference repo-common_SOURCE_DIR still resolve.
+    # Compatibility shims so sub-projects that reference FetchContent variables still resolve.
     set(repo-common_SOURCE_DIR ${TRITON_COMMON_SOURCE_DIR})
+    # repo-common_BINARY_DIR is used by src/python to locate generated protobuf py files.
+    set(repo-common_BINARY_DIR ${CMAKE_CURRENT_BINARY_DIR}/triton-common-build)
+    # triton/common/ headers must be on the include path for C++ library and tests.
+    include_directories(${TRITON_COMMON_SOURCE_DIR}/include)
   endif()
 
   if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
