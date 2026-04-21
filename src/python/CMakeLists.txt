@@ -53,6 +53,16 @@ endif()
 if(TRITON_COMMON_SOURCE_DIR)
   # Conan mode: common (proto-py-library, grpc-service-py-library) already
   # added by the parent CMakeLists.txt via add_subdirectory(${TRITON_COMMON_SOURCE_DIR}).
+  #
+  # build_wheel.py looks for generated proto .py files via the FetchContent
+  # convention: ../_deps/repo-common-build/protobuf/ (relative to the library
+  # binary dir).  In Conan mode the actual path is repo-common_BINARY_DIR.
+  # Create a compatibility symlink so the script finds the files without change.
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/_deps")
+  if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/_deps/repo-common-build")
+    file(CREATE_LINK "${repo-common_BINARY_DIR}"
+         "${CMAKE_CURRENT_BINARY_DIR}/_deps/repo-common-build" SYMBOLIC)
+  endif()
 else()
   # Legacy mode: fetch repo-common from GitHub.
   include(FetchContent)
