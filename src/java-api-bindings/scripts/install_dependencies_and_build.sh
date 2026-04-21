@@ -139,8 +139,8 @@ cd javacpp-presets
 
 # Remove developer_tools/server related build
 if [ ${INCLUDE_DEVELOPER_TOOLS_SERVER} -eq 0 ]; then
-    rm -r tritonserver/src/gen
-    rm tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritondevelopertoolsserver.java
+    rm -rf tritonserver/src/gen
+    rm -f tritonserver/src/main/java/org/bytedeco/tritonserver/presets/tritondevelopertoolsserver.java
 fi
 
 mvn clean install --projects .,tritonserver
