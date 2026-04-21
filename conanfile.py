@@ -79,6 +79,7 @@ class TritonClientConan(ConanFile):
         # proto-py-library) are built via add_subdirectory without a network fetch.
         tc.variables["TRITON_COMMON_SOURCE_DIR"] = ws + "/common"
         tc.variables["TRITON_SKIP_THIRD_PARTY_FETCH"] = True
+        tc.variables["TRITON_USE_THIRD_PARTY"] = False
         tc.variables["TRITON_ENABLE_GPU"] = self.options.enable_gpu
         tc.variables["TRITON_ENABLE_CC_HTTP"] = self.options.enable_http
         tc.variables["TRITON_ENABLE_CC_GRPC"] = self.options.enable_grpc
