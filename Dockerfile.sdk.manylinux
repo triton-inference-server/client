@@ -135,6 +135,7 @@ RUN --mount=type=secret,id=conan_token \
         -o "&:enable_grpc=True" \
         -o "&:enable_http=True" \
         --build=missing \
+        --build=protobuf \
         -r ${CONAN_REMOTE_NAME} \
         --output-folder=/workspace/client/build/${TRITON_CLIENT_PRESET}/conan && \
     conan remote logout ${CONAN_REMOTE_NAME}
