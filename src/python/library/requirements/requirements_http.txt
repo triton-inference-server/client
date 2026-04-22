@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2024, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2026, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -26,5 +26,6 @@
 
 aiohttp>=3.8.1,<4.0.0
 geventhttpclient>=2.3.3
+greenlet<3.4.0 # [TRI-964] downgraded to avoid segfault in http client teardown
 numpy>=1.19.1
 python-rapidjson>=0.9.1
