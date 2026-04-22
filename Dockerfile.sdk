@@ -169,6 +169,7 @@ COPY ${TRITON_COMMON_REPO_SUBDIR} common
 # cd to the client source tree so both commands find client/CMakePresets.json.
 RUN cd /workspace/client && \
     TRITON_VERSION=$(cat TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    echo "${TRITON_VERSION}" > TRITON_VERSION && \
     cmake --preset ${TRITON_CLIENT_PRESET} \
           -DCMAKE_INSTALL_PREFIX=/workspace/install \
           -DTRITON_VERSION=${TRITON_VERSION} && \
@@ -186,11 +187,15 @@ ARG TRITON_REPO_ORGANIZATION
 
 RUN if [ "${TARGETPLATFORM:-}" = "linux/amd64" ] || \
        ([ -z "${TARGETPLATFORM:-}" ] && [ "$(uname -m)" = "x86_64" ]); then \
-        source /workspace/client/src/java-api-bindings/scripts/install_dependencies_and_build.sh \
-            --maven-version "${JAVA_BINDINGS_MAVEN_VERSION}" \
-            --core-tag "${TRITON_CORE_REPO_TAG}" \
-            --javacpp-tag "${JAVA_BINDINGS_JAVACPP_PRESETS_TAG}" \
-            --jar-install-path /workspace/install/java-api-bindings; \
+        if [ -f /opt/tritonserver/lib/libtritonserver.so ]; then \
+            source /workspace/client/src/java-api-bindings/scripts/install_dependencies_and_build.sh \
+                --maven-version "${JAVA_BINDINGS_MAVEN_VERSION}" \
+                --core-tag "${TRITON_CORE_REPO_TAG}" \
+                --javacpp-tag "${JAVA_BINDINGS_JAVACPP_PRESETS_TAG}" \
+                --jar-install-path /workspace/install/java-api-bindings; \
+        else \
+            echo "INFO: Skipping Java API bindings — libtritonserver.so not found in base image (client-only build)"; \
+        fi; \
     fi
 
 ############################################################################
