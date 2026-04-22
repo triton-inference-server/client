@@ -97,8 +97,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     /opt/build-venv/bin/pip install \
         "conan>=2.0,<3.0" \
         "cmake>=3.31.8" \
-        "grpcio-tools<1.68" \
-        auditwheel
+        "grpcio-tools<1.68"
 
 ENV PATH=/opt/build-venv/bin:${PATH}
 
@@ -135,7 +134,9 @@ RUN --mount=type=secret,id=conan_token \
         -o "&:enable_grpc=True" \
         -o "&:enable_http=True" \
         --build=missing \
-        --build=protobuf \
+        '--build=protobuf*' \
+        '--build=grpc*' \
+        '--build=gtest*' \
         -r ${CONAN_REMOTE_NAME} \
         --output-folder=/workspace/client/build/${TRITON_CLIENT_PRESET}/conan && \
     conan remote logout ${CONAN_REMOTE_NAME}
@@ -155,13 +156,14 @@ RUN cd /workspace/client && \
     cmake --install build/${TRITON_CLIENT_PRESET} \
           --prefix /workspace/install
 
-# ── Layer 3: auditwheel repair ────────────────────────────────────────────
-# Bundle shared-lib dependencies into the wheel and apply the manylinux_2_28
-# platform tag so it is installable on any distro with glibc >= 2.28.
-RUN auditwheel repair \
-        --plat manylinux_2_28_x86_64 \
-        --wheel-dir /workspace/dist \
-        "$(find /workspace/install/python/ -maxdepth 1 -name 'tritonclient-*linux*.whl')"
+# ── Layer 3: place wheel in dist/ ─────────────────────────────────────────
+# tritonclient is a pure-Python wheel (gRPC stubs + pure-Python HTTP client
+# wrappers; no compiled C extensions).  auditwheel repair requires ELF
+# binaries inside the wheel and cannot process a py3-none-any wheel.
+# Copy it directly; pip install works on any platform without repair.
+RUN mkdir -p /workspace/dist && \
+    cp "$(find /workspace/install/python/ -maxdepth 1 -name 'tritonclient-*-any.whl' | head -1)" \
+       /workspace/dist/
 
 ############################################################################
 ##  Distribution image — contains only the repaired wheel
