@@ -64,7 +64,9 @@ if(TRITON_COMMON_SOURCE_DIR)
   # GTest comes from the Conan-provided package; create a compatibility alias
   # for the legacy lowercase 'gtest' target name used by tests/.
   if(TRITON_ENABLE_TESTS)
-    find_package(GTest REQUIRED)
+    if(NOT TARGET GTest::gtest)
+      find_package(GTest REQUIRED)
+    endif()
     if(NOT TARGET gtest)
       add_library(gtest ALIAS GTest::gtest)
     endif()

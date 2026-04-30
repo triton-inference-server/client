@@ -80,6 +80,22 @@ if(TRITON_SKIP_THIRD_PARTY_FETCH)
       set(TRITON_COMMON_ENABLE_PROTOBUF ON)
       set(TRITON_COMMON_ENABLE_GRPC ON)
     endif()
+    # Conan creates imported targets for its packages but does not set the
+    # legacy cmake variables (RAPIDJSON_INCLUDE_DIRS, Protobuf_INCLUDE_DIRS)
+    # that common/CMakeLists.txt uses for target_include_directories / include_directories.
+    # Pre-find the packages here and backfill those variables from the imported
+    # targets so the common subdirectory compiles correctly.
+    find_package(RapidJSON CONFIG REQUIRED)
+    if(NOT RAPIDJSON_INCLUDE_DIRS AND TARGET rapidjson)
+      get_target_property(RAPIDJSON_INCLUDE_DIRS rapidjson INTERFACE_INCLUDE_DIRECTORIES)
+    endif()
+    if(TRITON_ENABLE_CC_GRPC OR TRITON_ENABLE_PYTHON_GRPC)
+      set(protobuf_MODULE_COMPATIBLE TRUE CACHE BOOL "protobuf_MODULE_COMPATIBLE" FORCE)
+      find_package(Protobuf CONFIG REQUIRED)
+      if(NOT Protobuf_INCLUDE_DIRS AND TARGET protobuf::libprotobuf)
+        get_target_property(Protobuf_INCLUDE_DIRS protobuf::libprotobuf INTERFACE_INCLUDE_DIRECTORIES)
+      endif()
+    endif()
     add_subdirectory(${TRITON_COMMON_SOURCE_DIR} triton-common-build)
     # Compatibility shims so sub-projects that reference FetchContent variables still resolve.
     set(repo-common_SOURCE_DIR ${TRITON_COMMON_SOURCE_DIR})

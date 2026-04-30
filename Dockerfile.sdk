@@ -42,7 +42,7 @@
 #       --build-arg TRITON_CLIENT_PRESET=triton-client-release-cuda-ubuntu-x86_64 ...
 #
 
-ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver:26.03-py3-min
+ARG BASE_IMAGE=nvcr.io/nvidia/tritonserver:26.04-py3-min
 
 # Subdirectory paths relative to the Docker build context (monorepo root).
 ARG TRITON_CLIENT_REPO_SUBDIR=client
@@ -276,7 +276,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         pdfkit \
         pillow \
         genai-perf && \
-    find install/python/ -maxdepth 1 -type f -name "tritonclient-*linux*.whl" \
+    find install/python/ -maxdepth 1 -type f -name "tritonclient-*any*.whl" \
          | xargs printf -- '%s[all]' | xargs pip install --upgrade
 
 # Install Model Analyzer when a repo tag is supplied.
