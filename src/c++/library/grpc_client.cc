@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <new>
 #include <sstream>
 #include <string>
 
@@ -1336,6 +1337,11 @@ InferenceServerGrpcClient::StartStream(
         "Callback function must be provided along with StartStream() call.");
   }
 
+  // Each ModelStreamInfer RPC requires a fresh ClientContext (e.g. after
+  // StopStream(cancel_requests=true) the previous context is cancelled).
+  grpc_context_.~ClientContext();
+  new (&grpc_context_) grpc::ClientContext();
+
   stream_callback_ = callback;
   enable_stream_stats_ = enable_stats;
 
@@ -1360,12 +1366,18 @@ InferenceServerGrpcClient::StartStream(
 }
 
 Error
-InferenceServerGrpcClient::StopStream()
+InferenceServerGrpcClient::StopStream(bool cancel_requests)
 {
   if (stream_worker_.joinable()) {
-    grpc_stream_->WritesDone();
-    // The reader thread will drain the stream properly
+    if (cancel_requests) {
+      stream_cancel_requested_.store(true, std::memory_order_release);
+      grpc_context_.TryCancel();
+    } else {
+      grpc_stream_->WritesDone();
+    }
+    // The reader thread drains the stream and completes the RPC (Finish).
     stream_worker_.join();
+    stream_cancel_requested_.store(false, std::memory_order_release);
     if (verbose_) {
       std::cout << "Stopped stream..." << std::endl;
     }
@@ -1668,6 +1680,14 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
     }
     stream_callback_(stream_result);
     response = std::make_shared<inference::ModelStreamInferResponse>();
+  }
+  if (stream_cancel_requested_.load(std::memory_order_acquire) && !exiting_) {
+    InferResult* cancel_result = nullptr;
+    auto cancel_response =
+        std::make_shared<inference::ModelStreamInferResponse>();
+    cancel_response->set_error_message("Locally cancelled by application!");
+    InferResultGrpc::Create(&cancel_result, cancel_response);
+    stream_callback_(cancel_result);
   }
   grpc_stream_->Finish();
 }

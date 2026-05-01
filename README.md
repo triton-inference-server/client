@@ -516,9 +516,11 @@ examples demonstrate how to infer with AsyncIO.
 
 ### Request Cancellation
 
-Starting from r23.10, triton python gRPC client can issue cancellation
+Starting from r23.10, the Triton Python gRPC client can issue cancellation
 to inflight requests. This can be done by calling `cancel()` on the
-CallContext object returned by `async_infer()` API.
+CallContext object returned by `async_infer()` API. The C++ gRPC client
+supports cancellation when stopping a bidirectional inference stream; see
+the **C++ gRPC client (streaming)** subsection below.
 
 ```python
   ctx = client.async_infer(...)
@@ -537,6 +539,28 @@ sent via this stream.
   # Cancels all pending requests on stream closure rather than blocking until requests complete
   client.stop_stream(cancel_requests=True)
 ```
+
+The C++ `InferenceServerGrpcClient` exposes the same behavior for
+`ModelStreamInfer`: pass `true` to `StopStream()` to cancel the streaming RPC
+instead of ending the write side with `WritesDone()` and waiting for the
+server to finish all responses. The stream callback may be invoked once more
+with an error whose message is `Locally cancelled by application!` (matching
+the Python client when gRPC supplies no `details()` string). This cancels the
+**entire** bidirectional stream, not individual logical requests multiplexed on
+that stream; server-side work stops only if Triton and the backends honor
+cancellation (see the server user guide linked below).
+
+```cpp
+  client->StartStream(callback, ...);
+  for (...) {
+    client->AsyncStreamInfer(options, inputs, outputs);
+  }
+  // Cancels the gRPC stream (TryCancel); does not block until all responses drain
+  client->StopStream(/*cancel_requests=*/true);
+```
+
+See [grpc_client.h](src/c++/library/grpc_client.h) and
+[grpc_client.cc](src/c++/library/grpc_client.cc) for the C++ API.
 
 See more details about these APIs in
 [grpc/\_client.py](src/python/library/tritonclient/grpc/_client.py).

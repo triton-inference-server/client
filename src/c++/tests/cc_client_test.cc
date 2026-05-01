@@ -24,7 +24,10 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <chrono>
+#include <condition_variable>
 #include <fstream>
+#include <mutex>
 
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
 #include "grpc_client.h"
@@ -293,6 +296,154 @@ class GRPCTraceTest : public ::testing::Test {
   std::string model_name_;
   std::unique_ptr<tc::InferenceServerGrpcClient> client_;
 };
+
+// gRPC streaming cancellation (StopStream(cancel_requests=true)); requires
+// Triton at localhost:8001 with model 'onnx_int32_int32_int32' like ClientTest.
+class GRPCStreamStopTest : public ::testing::Test {
+ public:
+  void SetUp() override
+  {
+    const std::string url = "localhost:8001";
+    auto err = tc::InferenceServerGrpcClient::Create(&client_, url);
+    ASSERT_TRUE(err.IsOk())
+        << "failed to create GRPC client: " << err.Message();
+    shape_ = {1, 16};
+    dtype_ = "INT32";
+    model_name_ = "onnx_int32_int32_int32";
+    input_data_.resize(16);
+    for (size_t j = 0; j < 16; ++j) {
+      input_data_[j] = static_cast<int32_t>(j);
+    }
+  }
+
+  tc::Error PrepareInputs(
+      const std::vector<int32_t>& input_0, const std::vector<int32_t>& input_1,
+      std::vector<tc::InferInput*>* inputs)
+  {
+    inputs->emplace_back();
+    auto err =
+        tc::InferInput::Create(&inputs->back(), "INPUT0", shape_, dtype_);
+    if (!err.IsOk()) {
+      return err;
+    }
+    err = inputs->back()->AppendRaw(
+        reinterpret_cast<const uint8_t*>(input_0.data()),
+        input_0.size() * sizeof(int32_t));
+    if (!err.IsOk()) {
+      return err;
+    }
+    inputs->emplace_back();
+    err = tc::InferInput::Create(&inputs->back(), "INPUT1", shape_, dtype_);
+    if (!err.IsOk()) {
+      return err;
+    }
+    err = inputs->back()->AppendRaw(
+        reinterpret_cast<const uint8_t*>(input_1.data()),
+        input_1.size() * sizeof(int32_t));
+    return err;
+  }
+
+  std::string model_name_;
+  std::unique_ptr<tc::InferenceServerGrpcClient> client_;
+  std::vector<int32_t> input_data_;
+  std::vector<int64_t> shape_;
+  std::string dtype_;
+};
+
+TEST_F(GRPCStreamStopTest, StopStreamCancelWithoutInferNotifiesCallback)
+{
+  std::mutex mu;
+  std::condition_variable cv;
+  bool saw_local_cancel = false;
+
+  auto callback = [&saw_local_cancel, &mu, &cv](tc::InferResult* result) {
+    const tc::Error st = result->RequestStatus();
+    const std::string msg = st.Message();
+    if (!st.IsOk() &&
+        msg.find("Locally cancelled by application!") != std::string::npos) {
+      std::lock_guard<std::mutex> lk(mu);
+      saw_local_cancel = true;
+    }
+    delete result;
+    cv.notify_one();
+  };
+
+  ASSERT_TRUE(client_->StartStream(callback, false).IsOk());
+  ASSERT_TRUE(client_->StopStream(/*cancel_requests=*/true).IsOk());
+
+  std::unique_lock<std::mutex> lk(mu);
+  ASSERT_TRUE(cv.wait_for(lk, std::chrono::seconds(5), [&] {
+    return saw_local_cancel;
+  })) << "expected stream callback reporting local cancellation";
+}
+
+TEST_F(GRPCStreamStopTest, StopStreamCancelThenRestartAndInfer)
+{
+  std::mutex mu;
+  std::condition_variable cv;
+  int cancel_callbacks = 0;
+
+  auto cancel_cb = [&cancel_callbacks, &mu, &cv](tc::InferResult* result) {
+    const tc::Error st = result->RequestStatus();
+    if (!st.IsOk() && st.Message().find("Locally cancelled by application!") !=
+                          std::string::npos) {
+      std::lock_guard<std::mutex> lk(mu);
+      ++cancel_callbacks;
+    }
+    delete result;
+    cv.notify_one();
+  };
+
+  ASSERT_TRUE(client_->StartStream(cancel_cb, false).IsOk());
+  ASSERT_TRUE(client_->StopStream(true).IsOk());
+  {
+    std::unique_lock<std::mutex> lk(mu);
+    ASSERT_TRUE(cv.wait_for(
+        lk, std::chrono::seconds(5), [&] { return cancel_callbacks > 0; }));
+  }
+
+  std::mutex mu2;
+  std::condition_variable cv2;
+  bool got_success = false;
+
+  auto ok_cb = [&got_success, &mu2, &cv2](tc::InferResult* result) {
+    if (result->RequestStatus().IsOk()) {
+      std::lock_guard<std::mutex> lk(mu2);
+      got_success = true;
+    }
+    delete result;
+    cv2.notify_one();
+  };
+
+  ASSERT_TRUE(client_->StartStream(ok_cb, false).IsOk());
+
+  std::vector<tc::InferInput*> inputs;
+  tc::InferOptions options(model_name_);
+  options.model_version_ = "1";
+  ASSERT_TRUE(PrepareInputs(input_data_, input_data_, &inputs).IsOk());
+
+  std::vector<const tc::InferRequestedOutput*> outputs;
+  tc::InferRequestedOutput* out0 = nullptr;
+  tc::InferRequestedOutput* out1 = nullptr;
+  ASSERT_TRUE(tc::InferRequestedOutput::Create(&out0, "OUTPUT0").IsOk());
+  ASSERT_TRUE(tc::InferRequestedOutput::Create(&out1, "OUTPUT1").IsOk());
+  outputs.push_back(out0);
+  outputs.push_back(out1);
+
+  ASSERT_TRUE(client_->AsyncStreamInfer(options, inputs, outputs).IsOk());
+  ASSERT_TRUE(client_->StopStream(false).IsOk());
+
+  std::unique_lock<std::mutex> lk2(mu2);
+  ASSERT_TRUE(cv2.wait_for(lk2, std::chrono::seconds(5), [&] {
+    return got_success;
+  })) << "expected successful inference after restarting stream";
+
+  for (auto* in : inputs) {
+    delete in;
+  }
+  delete out0;
+  delete out1;
+}
 
 
 TYPED_TEST_SUITE_P(ClientTest);

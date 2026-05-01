@@ -27,6 +27,7 @@
 
 #include <grpcpp/grpcpp.h>
 
+#include <atomic>
 #include <queue>
 
 #include "common.h"
@@ -582,8 +583,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
   /// Stops an active grpc bi-directional stream, if one available.
+  /// \param cancel_requests If true, cancels the streaming RPC (via
+  /// grpc::ClientContext::TryCancel) instead of gracefully ending the write
+  /// side with WritesDone. Cancellation frees the client to start a new
+  /// stream without waiting for the server to finish all in-flight work, and
+  /// typically triggers Triton server-side request cancellation for work
+  /// already accepted on that stream. When true, the stream callback may be
+  /// invoked one additional time with an error result whose message contains
+  /// "Locally cancelled by application!".
   /// \return Error object indicating success or failure of the request.
-  Error StopStream();
+  Error StopStream(bool cancel_requests = false);
 
   /// Runs an asynchronous inference over gRPC bi-directional streaming
   /// API. A stream must be established with a call to StartStream()
@@ -630,6 +639,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   bool enable_stream_stats_;
   std::queue<std::unique_ptr<RequestTimers>> ongoing_stream_request_timers_;
   std::mutex stream_mutex_;
+  std::atomic<bool> stream_cancel_requested_{false};
 
   // GRPC end point.
   std::shared_ptr<inference::GRPCInferenceService::Stub> stub_;
