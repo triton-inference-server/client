@@ -29,7 +29,12 @@ import struct
 from urllib.parse import quote_plus
 
 import rapidjson as json
-from tritonclient.utils import *
+from tritonclient.utils import (
+    TRITON_RESERVED_REQUEST_PARAMS,
+    TRITON_RESERVED_REQUEST_PARAMS_PREFIX,
+    InferenceServerException,
+    raise_error,
+)
 
 
 def _get_error(response):
