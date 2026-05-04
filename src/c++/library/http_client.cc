@@ -1,4 +1,4 @@
-// Copyright 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -648,7 +648,6 @@ HttpInferRequest::ConvertBinaryInputToJSON(
     return Error(
         "datatype '" + datatype +
         "' is not supported with JSON. Please use the binary data format");
-
   } else if (datatype == "FP32") {
     for (size_t i = 0; i < element_count; i++) {
       data_json.AppendDouble(reinterpret_cast<const float*>(buf)[i]);
