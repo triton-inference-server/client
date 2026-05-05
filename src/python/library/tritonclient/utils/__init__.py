@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -31,6 +31,21 @@ import struct
 import numpy as np
 
 from ._shared_memory_tensor import SharedMemoryTensor
+
+# Reserved request parameters for Triton's usage.
+# Other locations:
+# - server/src/common.h
+# - server/docs/protocol/extension_parameters.md
+TRITON_RESERVED_REQUEST_PARAMS = [
+    "sequence_id",
+    "sequence_start",
+    "sequence_end",
+    "priority",
+    "timeout",
+    "headers",
+    "binary_data_output",
+]
+TRITON_RESERVED_REQUEST_PARAMS_PREFIX = "triton_"
 
 
 def raise_error(msg):
