@@ -1,4 +1,4 @@
-// Copyright 2020-2022, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -27,6 +27,7 @@
 
 #include <grpcpp/grpcpp.h>
 
+#include <atomic>
 #include <queue>
 
 #include "common.h"
@@ -79,6 +80,28 @@ struct KeepAliveOptions {
   // frame to be sent. gRPC Core will not continue sending pings if we run over
   // the limit. Setting it to 0 allows sending pings without such a restriction.
   int http2_max_pings_without_data;
+};
+
+//==============================================================================
+/// A handle returned by AsyncInfer for per-request cancellation.
+///
+/// The caller owns the returned CallContext and must `delete` it.
+class CallContext {
+ public:
+  /// Triggers grpc::ClientContext::TryCancel() on the underlying RPC. After
+  /// cancellation the AsyncInfer callback fires once with a status whose
+  /// message contains "Locally cancelled by application!". Safe to call
+  /// after the RPC has completed (no-op).
+  /// \return Error object indicating success or failure.
+  Error Cancel();
+
+ private:
+  friend class InferenceServerGrpcClient;
+  explicit CallContext(std::shared_ptr<grpc::ClientContext> ctx)
+      : grpc_context_(std::move(ctx))
+  {
+  }
+  std::shared_ptr<grpc::ClientContext> grpc_context_;
 };
 
 //==============================================================================
@@ -494,6 +517,10 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// in the metadata of gRPC request.
   /// \param compression_algorithm The compression algorithm to be used
   /// by gRPC when sending requests. By default compression is not used.
+  /// \param ctx_out If not nullptr, on Error::Success this is set to a
+  /// newly heap-allocated CallContext for cancelling the in-flight RPC.
+  /// The caller owns the returned object and must `delete` it. When
+  /// ctx_out is nullptr (the default) the request cannot be cancelled.
   /// \return Error object indicating success or failure of the request.
   Error AsyncInfer(
       OnCompleteFn callback, const InferOptions& options,
@@ -501,7 +528,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<const InferRequestedOutput*>& outputs =
           std::vector<const InferRequestedOutput*>(),
       const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE,
+      CallContext** ctx_out = nullptr);
 
   /// Run multiple synchronous inferences on server.
   /// \param results Returns the results of the inferences.
@@ -550,6 +578,13 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   /// in the metadata of gRPC request.
   /// \param compression_algorithm The compression algorithm to be used
   /// by gRPC when sending requests. By default compression is not used.
+  /// \param ctxs_out If not nullptr, on return the vector is sized to
+  /// inputs.size() and each slot is set to a newly heap-allocated
+  /// CallContext for the corresponding in-flight RPC, or nullptr if that
+  /// request failed locally before the RPC started. Cancellation is
+  /// per-request; the multi callback still fires exactly once. The caller
+  /// owns each non-null entry and must `delete` it. When ctxs_out is
+  /// nullptr (the default) the requests cannot be cancelled.
   /// \return Error object indicating success or failure of the request.
   Error AsyncInferMulti(
       OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
@@ -557,7 +592,8 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       const std::vector<std::vector<const InferRequestedOutput*>>& outputs =
           std::vector<std::vector<const InferRequestedOutput*>>(),
       const Headers& headers = Headers(),
-      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
+      grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE,
+      std::vector<CallContext*>* ctxs_out = nullptr);
 
   /// Starts a grpc bi-directional stream to send streaming inferences.
   /// \param callback The callback function to be invoked on receiving a
@@ -582,8 +618,16 @@ class InferenceServerGrpcClient : public InferenceServerClient {
       grpc_compression_algorithm compression_algorithm = GRPC_COMPRESS_NONE);
 
   /// Stops an active grpc bi-directional stream, if one available.
+  /// \param cancel_requests If true, cancels the streaming RPC (via
+  /// grpc::ClientContext::TryCancel) instead of gracefully ending the write
+  /// side with WritesDone. Cancellation frees the client to start a new
+  /// stream without waiting for the server to finish all in-flight work, and
+  /// typically triggers Triton server-side request cancellation for work
+  /// already accepted on that stream. When true, the stream callback may be
+  /// invoked one additional time with an error result whose message contains
+  /// "Locally cancelled by application!".
   /// \return Error object indicating success or failure of the request.
-  Error StopStream();
+  Error StopStream(bool cancel_requests = false);
 
   /// Runs an asynchronous inference over gRPC bi-directional streaming
   /// API. A stream must be established with a call to StartStream()
@@ -630,6 +674,7 @@ class InferenceServerGrpcClient : public InferenceServerClient {
   bool enable_stream_stats_;
   std::queue<std::unique_ptr<RequestTimers>> ongoing_stream_request_timers_;
   std::mutex stream_mutex_;
+  std::atomic<bool> stream_cancel_requested_{false};
 
   // GRPC end point.
   std::shared_ptr<inference::GRPCInferenceService::Stub> stub_;

@@ -1,4 +1,4 @@
-// Copyright 2020-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -34,6 +34,7 @@
 #include <future>
 #include <iostream>
 #include <mutex>
+#include <new>
 #include <sstream>
 #include <string>
 
@@ -172,7 +173,8 @@ SetTimeout(const uint64_t& client_timeout_ms, grpc::ClientContext* context)
 class GrpcInferRequest : public InferRequest {
  public:
   GrpcInferRequest(InferenceServerClient::OnCompleteFn callback = nullptr)
-      : InferRequest(callback), grpc_status_(),
+      : InferRequest(callback),
+        grpc_context_(std::make_shared<grpc::ClientContext>()), grpc_status_(),
         grpc_response_(std::make_shared<inference::ModelInferResponse>())
   {
   }
@@ -180,8 +182,10 @@ class GrpcInferRequest : public InferRequest {
   friend InferenceServerGrpcClient;
 
  private:
-  // Variables for GRPC call
-  grpc::ClientContext grpc_context_;
+  // Variables for GRPC call. The ClientContext is held by shared_ptr so that
+  // a CallContext returned to the caller can co-own it and safely call
+  // TryCancel() at any point during (or after) the RPC's lifetime.
+  std::shared_ptr<grpc::ClientContext> grpc_context_;
   grpc::Status grpc_status_;
   std::shared_ptr<inference::ModelInferResponse> grpc_response_;
 };
@@ -443,6 +447,17 @@ InferResultGrpc::InferResultGrpc(
     is_final_response_ = is_final_response_itr->second.bool_param();
   }
   is_null_response_ = response_->outputs().empty() && is_final_response_;
+}
+
+//==============================================================================
+
+Error
+CallContext::Cancel()
+{
+  if (grpc_context_) {
+    grpc_context_->TryCancel();
+  }
+  return Error::Success;
 }
 
 //==============================================================================
@@ -1154,7 +1169,8 @@ InferenceServerGrpcClient::AsyncInfer(
     OnCompleteFn callback, const InferOptions& options,
     const std::vector<InferInput*>& inputs,
     const std::vector<const InferRequestedOutput*>& outputs,
-    const Headers& headers, grpc_compression_algorithm compression_algorithm)
+    const Headers& headers, grpc_compression_algorithm compression_algorithm,
+    CallContext** ctx_out)
 {
   if (callback == nullptr) {
     return Error(
@@ -1170,13 +1186,14 @@ InferenceServerGrpcClient::AsyncInfer(
   async_request->Timer().CaptureTimestamp(RequestTimers::Kind::REQUEST_START);
   async_request->Timer().CaptureTimestamp(RequestTimers::Kind::SEND_START);
   for (const auto& it : headers) {
-    async_request->grpc_context_.AddMetadata(it.first, it.second);
+    async_request->grpc_context_->AddMetadata(it.first, it.second);
   }
 
   if (options.client_timeout_ != 0) {
-    SetTimeout(options.client_timeout_, &(async_request->grpc_context_));
+    SetTimeout(options.client_timeout_, async_request->grpc_context_.get());
   }
-  async_request->grpc_context_.set_compression_algorithm(compression_algorithm);
+  async_request->grpc_context_->set_compression_algorithm(
+      compression_algorithm);
 
   Error err = PreRunProcessing(options, inputs, outputs);
   if (!err.IsOk()) {
@@ -1189,7 +1206,7 @@ InferenceServerGrpcClient::AsyncInfer(
   std::unique_ptr<
       grpc::ClientAsyncResponseReader<inference::ModelInferResponse>>
       rpc(stub_->PrepareAsyncModelInfer(
-          &async_request->grpc_context_, infer_request_,
+          async_request->grpc_context_.get(), infer_request_,
           &async_request_completion_queue_));
 
   rpc->StartCall();
@@ -1197,6 +1214,13 @@ InferenceServerGrpcClient::AsyncInfer(
   rpc->Finish(
       async_request->grpc_response_.get(), &async_request->grpc_status_,
       (void*)async_request);
+
+  // Hand the caller a cancellation handle co-owning the same ClientContext.
+  // Placed after StartCall/Finish so *ctx_out is only set on success; the
+  // earlier validation failure paths leave *ctx_out unchanged (nullptr).
+  if (ctx_out != nullptr) {
+    *ctx_out = new CallContext(async_request->grpc_context_);
+  }
 
   if (verbose_) {
     std::cout << "Sent request";
@@ -1255,7 +1279,8 @@ InferenceServerGrpcClient::AsyncInferMulti(
     OnMultiCompleteFn callback, const std::vector<InferOptions>& options,
     const std::vector<std::vector<InferInput*>>& inputs,
     const std::vector<std::vector<const InferRequestedOutput*>>& outputs,
-    const Headers& headers, grpc_compression_algorithm compression_algorithm)
+    const Headers& headers, grpc_compression_algorithm compression_algorithm,
+    std::vector<CallContext*>* ctxs_out)
 {
   // Sanity check
   if ((inputs.size() != options.size()) && (options.size() != 1)) {
@@ -1284,6 +1309,13 @@ InferenceServerGrpcClient::AsyncInferMulti(
       new std::atomic<size_t>(inputs.size()));
   std::shared_ptr<std::vector<InferResult*>> responses(
       new std::vector<InferResult*>(inputs.size()));
+
+  // Pre-size so AsyncInfer() can write slot i directly; slots stay
+  // nullptr for requests that fail before the RPC starts.
+  if (ctxs_out != nullptr) {
+    ctxs_out->assign(inputs.size(), nullptr);
+  }
+
   for (int64_t i = 0; i < (int64_t)inputs.size(); ++i) {
     const auto& request_options = options[std::min(max_option_idx, i)];
     const auto& request_output = (max_output_idx == -1)
@@ -1301,9 +1333,10 @@ InferenceServerGrpcClient::AsyncInferMulti(
       }
     };
 
+    CallContext** ctx = (ctxs_out != nullptr) ? &(*ctxs_out)[i] : nullptr;
     auto err = AsyncInfer(
         cb, request_options, inputs[i], request_output, headers,
-        compression_algorithm);
+        compression_algorithm, ctx);
     if (!err.IsOk()) {
       // Create response with error as other requests may be sent and their
       // responses may not be accessed outside the callback.
@@ -1336,6 +1369,12 @@ InferenceServerGrpcClient::StartStream(
         "Callback function must be provided along with StartStream() call.");
   }
 
+  // Reset grpc_context_ in place: a previous StopStream(cancel_requests=
+  // true) leaves it cancelled, and ClientContext deletes operator= so we
+  // can't just reassign it.
+  grpc_context_.~ClientContext();
+  new (&grpc_context_) grpc::ClientContext();
+
   stream_callback_ = callback;
   enable_stream_stats_ = enable_stats;
 
@@ -1360,12 +1399,18 @@ InferenceServerGrpcClient::StartStream(
 }
 
 Error
-InferenceServerGrpcClient::StopStream()
+InferenceServerGrpcClient::StopStream(bool cancel_requests)
 {
   if (stream_worker_.joinable()) {
-    grpc_stream_->WritesDone();
-    // The reader thread will drain the stream properly
+    if (cancel_requests) {
+      stream_cancel_requested_.store(true, std::memory_order_release);
+      grpc_context_.TryCancel();
+    } else {
+      grpc_stream_->WritesDone();
+    }
+    // The reader thread drains the stream and completes the RPC (Finish).
     stream_worker_.join();
+    stream_cancel_requested_.store(false, std::memory_order_release);
     if (verbose_) {
       std::cout << "Stopped stream..." << std::endl;
     }
@@ -1603,7 +1648,14 @@ InferenceServerGrpcClient::AsyncTransfer()
       InferResult* async_result;
       Error err;
       if (!async_request->grpc_status_.ok()) {
-        err = Error(async_request->grpc_status_.error_message());
+        // Map gRPC CANCELLED to the same message the streaming-cancel path
+        // emits, matching tritonclient.grpc._utils.get_cancelled_error().
+        if (async_request->grpc_status_.error_code() ==
+            grpc::StatusCode::CANCELLED) {
+          err = Error("Locally cancelled by application!");
+        } else {
+          err = Error(async_request->grpc_status_.error_message());
+        }
       }
       async_request->Timer().CaptureTimestamp(RequestTimers::Kind::RECV_START);
       InferResultGrpc::Create(
@@ -1668,6 +1720,16 @@ InferenceServerGrpcClient::AsyncStreamTransfer()
     }
     stream_callback_(stream_result);
     response = std::make_shared<inference::ModelStreamInferResponse>();
+  }
+  // After StopStream(cancel_requests=true), Read() drains without a status,
+  // so synthesize one final callback carrying the Python-parity message.
+  if (stream_cancel_requested_.load(std::memory_order_acquire) && !exiting_) {
+    InferResult* cancel_result = nullptr;
+    auto cancel_response =
+        std::make_shared<inference::ModelStreamInferResponse>();
+    cancel_response->set_error_message("Locally cancelled by application!");
+    InferResultGrpc::Create(&cancel_result, cancel_response);
+    stream_callback_(cancel_result);
   }
   grpc_stream_->Finish();
 }
