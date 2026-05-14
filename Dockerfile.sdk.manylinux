@@ -49,6 +49,8 @@ ARG BASE_IMAGE=quay.io/pypa/manylinux_2_28_x86_64
 # Subdirectory paths relative to the Docker build context (monorepo root).
 ARG TRITON_CLIENT_REPO_SUBDIR=client
 ARG TRITON_COMMON_REPO_SUBDIR=common
+# Authoritative TRITON_VERSION lives in the server repo.
+ARG TRITON_SERVER_REPO_SUBDIR=server
 
 # Conan remote credentials (token supplied via Docker BuildKit secret).
 ARG CONAN_USER=triton-sdk
@@ -144,11 +146,13 @@ RUN --mount=type=secret,id=conan_token \
 # ── Layer 2: Full source + cmake build ────────────────────────────────────
 COPY ${TRITON_CLIENT_REPO_SUBDIR} client
 COPY ${TRITON_COMMON_REPO_SUBDIR} common
+ARG TRITON_SERVER_REPO_SUBDIR
+COPY ${TRITON_SERVER_REPO_SUBDIR}/TRITON_VERSION client/TRITON_VERSION
 
 # Configure, build, and install.
 # cmake --preset / --build --preset resolve CMakePresets.json from CWD.
 RUN cd /workspace/client && \
-    TRITON_VERSION=$(cat TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    TRITON_VERSION=$(cat TRITON_VERSION) && \
     cmake --preset ${TRITON_CLIENT_PRESET} \
           -DCMAKE_INSTALL_PREFIX=/workspace/install \
           -DTRITON_VERSION=${TRITON_VERSION} && \

@@ -156,6 +156,8 @@ RUN --mount=type=secret,id=conan_token \
         -o "&:enable_http=True" \
         --build=missing \
         -r ${CONAN_REMOTE_NAME} \
+        --deployer=full_deploy \
+        --deployer-folder=/workspace/conan-deploy \
         --output-folder=/workspace/client/build/${TRITON_CLIENT_PRESET}/conan && \
     conan remote logout ${CONAN_REMOTE_NAME}
 
@@ -163,19 +165,36 @@ RUN --mount=type=secret,id=conan_token \
 # Copy the full source trees now that Conan deps are cached.
 COPY ${TRITON_CLIENT_REPO_SUBDIR} client
 COPY ${TRITON_COMMON_REPO_SUBDIR} common
+# Authoritative version is owned by the server repo; copy it into client/.
+ARG TRITON_SERVER_REPO_SUBDIR
+COPY ${TRITON_SERVER_REPO_SUBDIR}/TRITON_VERSION client/TRITON_VERSION
 
 # Configure, build, and install into /workspace/install.
 # cmake --preset / --build --preset resolve CMakePresets.json from CWD;
 # cd to the client source tree so both commands find client/CMakePresets.json.
 RUN cd /workspace/client && \
-    TRITON_VERSION=$(cat TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
-    echo "${TRITON_VERSION}" > TRITON_VERSION && \
+    TRITON_VERSION=$(cat TRITON_VERSION) && \
     cmake --preset ${TRITON_CLIENT_PRESET} \
           -DCMAKE_INSTALL_PREFIX=/workspace/install \
           -DTRITON_VERSION=${TRITON_VERSION} && \
     cmake --build --preset ${TRITON_CLIENT_PRESET} && \
     cmake --install build/${TRITON_CLIENT_PRESET} \
           --prefix /workspace/install
+
+# Propagate Conan dependency headers + libs into /workspace/install so the
+# bundled SDK tarball matches the legacy ExternalProject layout consumed by
+# qa/L0_sdk (which compiles against grpcpp/grpcpp.h and links libcurl.a).
+RUN set -e; \
+    DEPLOY=/workspace/conan-deploy/full_deploy/host; \
+    mkdir -p /workspace/install/include /workspace/install/lib; \
+    for inc in $(find $DEPLOY -mindepth 3 -name include -type d); do \
+        cp -rn "$inc/." /workspace/install/include/ 2>/dev/null || true; \
+    done; \
+    for lib in $(find $DEPLOY -mindepth 3 \( -name lib -o -name lib64 \) -type d); do \
+        find "$lib" -maxdepth 1 -type f \
+            \( -name '*.a' -o -name '*.so' -o -name '*.so.*' \) \
+            -exec cp -P {} /workspace/install/lib/ \; ; \
+    done
 
 # ── Layer 3: Java API bindings ────────────────────────────────────────────
 # Parity with server/Dockerfile.sdk; amd64 only (javacpp presets are x86_64).
@@ -244,12 +263,26 @@ RUN ln -sf "$(which python3.12)" /usr/local/bin/python && \
 WORKDIR /workspace
 
 # Copy built artifacts from the build stage.
+# /workspace/TRITON_VERSION mirrors the convention used by server/Dockerfile.sdk.
 COPY --from=sdk_build /workspace/client/TRITON_VERSION client/TRITON_VERSION
+COPY --from=sdk_build /workspace/client/TRITON_VERSION TRITON_VERSION
 COPY --from=sdk_build /workspace/install/              install/
+
+# Conan's libcurl.a is built against OpenSSL 3.2 (uses SSL_get0_group_name),
+# which is newer than the OpenSSL 3.0.x archives shipped by Ubuntu's
+# libssl-dev.  When tests link with `-lssl -lcrypto`, gcc prefers the
+# unversioned libssl.so symlink (-> 3.0) over the .a archive.  Make `-lssl`
+# resolve to our static archive instead: copy our .a files into the multiarch
+# search dir and drop the unversioned .so symlinks (the .so.3 SONAME stays for
+# runtime consumers like Python's ssl module).
+RUN cp /workspace/install/lib/libssl.a /workspace/install/lib/libcrypto.a \
+       /usr/lib/x86_64-linux-gnu/ && \
+    rm -f /usr/lib/x86_64-linux-gnu/libssl.so \
+          /usr/lib/x86_64-linux-gnu/libcrypto.so
 
 # Create the versioned client tarball (same convention as server/Dockerfile.sdk).
 RUN cd install && \
-    VERSION=$(cat /workspace/client/TRITON_VERSION 2>/dev/null || echo "0.0.0") && \
+    VERSION=$(cat /workspace/TRITON_VERSION) && \
     tar zcf /workspace/v${VERSION}.clients.tar.gz *
 
 # QA infrastructure — parity with server/Dockerfile.sdk.
@@ -267,6 +300,7 @@ COPY ${TRITON_SERVER_REPO_SUBDIR}/NVIDIA_Deep_Learning_Container_License.pdf .
 
 # Install the Python client wheel and its optional runtime dependencies.
 # attrdict is included for parity with server/Dockerfile.sdk (used by quickstart examples).
+# setuptools provides pkg_resources, used by tritonclient.utils.cuda_shared_memory.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install \
         "grpcio<1.68" \
@@ -275,9 +309,11 @@ RUN --mount=type=cache,target=/root/.cache/pip \
         attrdict \
         pdfkit \
         pillow \
+        "setuptools<80" \
         genai-perf && \
     find install/python/ -maxdepth 1 -type f -name "tritonclient-*any*.whl" \
-         | xargs printf -- '%s[all]' | xargs pip install --upgrade
+         | xargs printf -- '%s[all]' | xargs pip install --upgrade && \
+    ln -sf /opt/venv-tritonclient/bin/perf_analyzer /usr/local/bin/perf_analyzer
 
 # Install Model Analyzer when a repo tag is supplied.
 ARG TRITON_MODEL_ANALYZER_REPO_TAG
