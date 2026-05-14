@@ -1,4 +1,4 @@
-# Copyright 2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2025-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -184,17 +184,19 @@ RUN cd /workspace/client && \
 # Propagate Conan dependency headers + libs into /workspace/install so the
 # bundled SDK tarball matches the legacy ExternalProject layout consumed by
 # qa/L0_sdk (which compiles against grpcpp/grpcpp.h and links libcurl.a).
+# `cp -rn` exits 1 when -n skips a colliding file; allow that specific exit
+# but surface other errors (no-space, permission, etc.).
 RUN set -e; \
     DEPLOY=/workspace/conan-deploy/full_deploy/host; \
     mkdir -p /workspace/install/include /workspace/install/lib; \
-    for inc in $(find $DEPLOY -mindepth 3 -name include -type d); do \
-        cp -rn "$inc/." /workspace/install/include/ 2>/dev/null || true; \
-    done; \
-    for lib in $(find $DEPLOY -mindepth 3 \( -name lib -o -name lib64 \) -type d); do \
+    while IFS= read -r inc; do \
+        cp -rn "$inc/." /workspace/install/include/ || true; \
+    done < <(find "$DEPLOY" -mindepth 3 -name include -type d); \
+    while IFS= read -r lib; do \
         find "$lib" -maxdepth 1 -type f \
             \( -name '*.a' -o -name '*.so' -o -name '*.so.*' \) \
             -exec cp -P {} /workspace/install/lib/ \; ; \
-    done
+    done < <(find "$DEPLOY" -mindepth 3 \( -name lib -o -name lib64 \) -type d)
 
 # ── Layer 3: Java API bindings ────────────────────────────────────────────
 # Parity with server/Dockerfile.sdk; amd64 only (javacpp presets are x86_64).
@@ -275,10 +277,15 @@ COPY --from=sdk_build /workspace/install/              install/
 # resolve to our static archive instead: copy our .a files into the multiarch
 # search dir and drop the unversioned .so symlinks (the .so.3 SONAME stays for
 # runtime consumers like Python's ssl module).
-RUN cp /workspace/install/lib/libssl.a /workspace/install/lib/libcrypto.a \
-       /usr/lib/x86_64-linux-gnu/ && \
-    rm -f /usr/lib/x86_64-linux-gnu/libssl.so \
-          /usr/lib/x86_64-linux-gnu/libcrypto.so
+RUN case "$(uname -m)" in \
+        x86_64) MULTIARCH=x86_64-linux-gnu ;; \
+        aarch64) MULTIARCH=aarch64-linux-gnu ;; \
+        *) echo "Unsupported architecture: $(uname -m)" >&2; exit 1 ;; \
+    esac && \
+    cp /workspace/install/lib/libssl.a /workspace/install/lib/libcrypto.a \
+       "/usr/lib/${MULTIARCH}/" && \
+    rm -f "/usr/lib/${MULTIARCH}/libssl.so" \
+          "/usr/lib/${MULTIARCH}/libcrypto.so"
 
 # Create the versioned client tarball (same convention as server/Dockerfile.sdk).
 RUN cd install && \
@@ -300,7 +307,8 @@ COPY ${TRITON_SERVER_REPO_SUBDIR}/NVIDIA_Deep_Learning_Container_License.pdf .
 
 # Install the Python client wheel and its optional runtime dependencies.
 # attrdict is included for parity with server/Dockerfile.sdk (used by quickstart examples).
-# setuptools provides pkg_resources, used by tritonclient.utils.cuda_shared_memory.
+# setuptools<80: setuptools 80+ removed the bundled pkg_resources module, which
+# tritonclient.utils.cuda_shared_memory still imports at module load time.
 RUN --mount=type=cache,target=/root/.cache/pip \
     pip install \
         "grpcio<1.68" \
