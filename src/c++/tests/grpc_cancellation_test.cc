@@ -246,50 +246,6 @@ TEST_F(GrpcCancellationTest, TestGrpcAsyncInferCancelExecutingRequest)
   CleanupInputs(&inputs);
 }
 
-// C++-specific lifetime check: the CallContext co-owns the ClientContext and
-// may outlive the RPC. Cancel() after natural completion must be a safe no-op
-// and must not invoke the callback again.
-TEST_F(GrpcCancellationTest, TestGrpcAsyncInferCancelAfterCompletionIsNoOp)
-{
-  std::vector<tc::InferInput*> inputs;
-  ASSERT_TRUE(PrepareInputs(&inputs).IsOk());
-
-  tc::CallContext* raw_ctx = nullptr;
-  ASSERT_TRUE(client_
-                  ->AsyncInfer(
-                      callback_, MakeOptions(), inputs, /*outputs=*/{},
-                      /*headers=*/{}, GRPC_COMPRESS_NONE, &raw_ctx)
-                  .IsOk());
-  ASSERT_NE(raw_ctx, nullptr);
-  std::unique_ptr<tc::CallContext> ctx(raw_ctx);
-
-  ASSERT_TRUE(WaitForResult(kCompletionTimeout)) << "inference never completed";
-  ExpectEchoOutput(result_.get());
-
-  ASSERT_TRUE(ctx->Cancel().IsOk());
-  std::this_thread::sleep_for(std::chrono::milliseconds(200));
-  ASSERT_EQ(GetCallbackCount(), 1)
-      << "Cancel() after completion produced an extra callback";
-
-  CleanupInputs(&inputs);
-}
-
-// Backwards-compat: AsyncInfer() called without ctx_out (the default arg)
-// keeps its previous behavior and does not return a handle.
-TEST_F(GrpcCancellationTest, TestGrpcAsyncInferWithoutContextStillCompletes)
-{
-  std::vector<tc::InferInput*> inputs;
-  ASSERT_TRUE(PrepareInputs(&inputs).IsOk());
-
-  ASSERT_TRUE(client_->AsyncInfer(callback_, MakeOptions(), inputs).IsOk());
-
-  ASSERT_TRUE(WaitForResult(kCompletionTimeout))
-      << "inference never completed without CallContext";
-  ExpectEchoOutput(result_.get());
-
-  CleanupInputs(&inputs);
-}
-
 // Two consecutive unary AsyncInfer calls on a single-instance delayed model:
 // the first runs, the second queues. Cancel the second, assert local cancel,
 // then cancel the first so the test does not wait for the full model delay.
@@ -342,6 +298,50 @@ TEST_F(GrpcCancellationTest, TestGrpcAsyncInferCancelQueuedRequest)
 
   CleanupInputs(&inputs0);
   CleanupInputs(&inputs1);
+}
+
+// C++-specific lifetime check: the CallContext co-owns the ClientContext and
+// may outlive the RPC. Cancel() after natural completion must be a safe no-op
+// and must not invoke the callback again.
+TEST_F(GrpcCancellationTest, TestGrpcAsyncInferCancelAfterCompletionIsNoOp)
+{
+  std::vector<tc::InferInput*> inputs;
+  ASSERT_TRUE(PrepareInputs(&inputs).IsOk());
+
+  tc::CallContext* raw_ctx = nullptr;
+  ASSERT_TRUE(client_
+                  ->AsyncInfer(
+                      callback_, MakeOptions(), inputs, /*outputs=*/{},
+                      /*headers=*/{}, GRPC_COMPRESS_NONE, &raw_ctx)
+                  .IsOk());
+  ASSERT_NE(raw_ctx, nullptr);
+  std::unique_ptr<tc::CallContext> ctx(raw_ctx);
+
+  ASSERT_TRUE(WaitForResult(kCompletionTimeout)) << "inference never completed";
+  ExpectEchoOutput(result_.get());
+
+  ASSERT_TRUE(ctx->Cancel().IsOk());
+  std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  ASSERT_EQ(GetCallbackCount(), 1)
+      << "Cancel() after completion produced an extra callback";
+
+  CleanupInputs(&inputs);
+}
+
+// Backwards-compat: AsyncInfer() called without ctx_out (the default arg)
+// keeps its previous behavior and does not return a handle.
+TEST_F(GrpcCancellationTest, TestGrpcAsyncInferWithoutContextStillCompletes)
+{
+  std::vector<tc::InferInput*> inputs;
+  ASSERT_TRUE(PrepareInputs(&inputs).IsOk());
+
+  ASSERT_TRUE(client_->AsyncInfer(callback_, MakeOptions(), inputs).IsOk());
+
+  ASSERT_TRUE(WaitForResult(kCompletionTimeout))
+      << "inference never completed without CallContext";
+  ExpectEchoOutput(result_.get());
+
+  CleanupInputs(&inputs);
 }
 
 // ---------------------------------------------------------------------------
