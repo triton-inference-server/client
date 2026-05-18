@@ -127,11 +127,7 @@ class InferInput:
 
         dtype = np_to_triton_dtype(input_tensor.dtype)
         if self._datatype != dtype:
-            error_message = (
-                "got unexpected datatype {} from numpy array, expected {}.".format(
-                    dtype, self._datatype
-                )
-            )
+            error_message = f"got unexpected datatype {dtype} from numpy array, expected {self._datatype}."
             if self._datatype == "BF16":
                 error_message += " Since r26.05, BF16 inputs must use ml_dtypes.bfloat16 instead of np.float32 truncation; create a numpy array with `np.array(data, dtype=ml_dtypes.bfloat16)`."
             raise_error(error_message)
