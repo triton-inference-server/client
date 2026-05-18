@@ -129,7 +129,7 @@ class InferInput:
         if self._input.datatype != dtype:
             error_message = f"got unexpected datatype {dtype} from numpy array, expected {self._input.datatype}."
             if self._input.datatype == "BF16":
-                error_message += " Since r26.05, BF16 inputs must use ml_dtypes.bfloat16 instead of np.float32 truncation; create a numpy array with `np.array(data, dtype=ml_dtypes.bfloat16)`."
+                error_message += " Since r26.06, BF16 inputs must use ml_dtypes.bfloat16 instead of np.float32 truncation; create a numpy array with `np.array(data, dtype=ml_dtypes.bfloat16)`."
             raise_error(error_message)
 
         valid_shape = True
