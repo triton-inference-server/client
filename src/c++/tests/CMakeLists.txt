@@ -1,4 +1,4 @@
-# Copyright 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -86,6 +86,28 @@ target_link_libraries(
 )
 install(
   TARGETS cc_client_test
+  RUNTIME DESTINATION bin
+)
+
+#
+# grpc_cancellation_test
+#
+add_executable(
+  grpc_cancellation_test
+  grpc_cancellation_test.cc
+)
+target_include_directories(
+  grpc_cancellation_test PRIVATE ${GTEST_INCLUDE_DIRS}
+)
+target_link_libraries(
+  grpc_cancellation_test
+  PRIVATE
+    grpcclient_static
+    gtest
+    ${GTEST_LIBRARY}
+)
+install(
+  TARGETS grpc_cancellation_test
   RUNTIME DESTINATION bin
 )
 
