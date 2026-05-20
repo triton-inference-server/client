@@ -224,11 +224,6 @@ the `default-jdk` package:
 $ apt-get install default-jdk maven
 ```
 
-Building on Windows vs. non-Windows requires different invocations
-because Triton on Windows does not yet support all the build options.
-
-#### Non-Windows
-
 Use *cmake* to configure the build. You should adjust the flags depending on
 the components of Triton Client you are working and would like to build.
 
@@ -265,55 +260,6 @@ Then use *make* to build the clients and examples.
 
 ```
 $ make -j$(nproc)/ cc-clients python-clients java-clients
-```
-
-When the build completes the libraries and examples can be found in
-the install directory.
-
-#### Windows
-
-To build the clients you must install an appropriate C++ compiler and
-other dependencies required for the build. The easiest way to do this
-is to create the [Windows min Docker
-image](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/build.md#windows-10-min-image)
-and the perform the build within a container launched from that image.
-
-```
-> docker run  -it --rm win10-py3-min powershell
-```
-
-It is not necessary to use Docker or the win10-py3-min container for
-the build, but if you do not you must install the appropriate
-dependencies onto your host system.
-
-Next use *cmake* to configure the build. If you are not building
-within the win10-py3-min container then you will likely need to adjust
-the CMAKE_TOOLCHAIN_FILE location in the following command.
-
-```
-$ mkdir build
-$ cd build
-$ cmake -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE='/vcpkg/scripts/buildsystems/vcpkg.cmake' -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
-```
-
-If you are building on a release branch (or on a development branch
-that is based off of a release branch), then you must also use
-additional cmake arguments to point to that release branch for repos
-that the client build depends on. For example, if you are building the
-r21.10 client branch then you need to use the following additional
-cmake flags:
-
-```
--DTRITON_COMMON_REPO_TAG=r21.10
--DTRITON_THIRD_PARTY_REPO_TAG=r21.10
--DTRITON_CORE_REPO_TAG=r21.10
-```
-
-Then use msbuild.exe to build.
-
-```
-$ msbuild.exe cc-clients.vcxproj -p:Configuration=Release -clp:ErrorsOnly
-$ msbuild.exe python-clients.vcxproj -p:Configuration=Release -clp:ErrorsOnly
 ```
 
 When the build completes the libraries and examples can be found in
