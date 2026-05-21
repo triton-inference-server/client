@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -30,12 +30,7 @@ import zlib
 
 import numpy as np
 import rapidjson as json
-from tritonclient.utils import (
-    deserialize_bf16_tensor,
-    deserialize_bytes_tensor,
-    raise_error,
-    triton_to_np_dtype,
-)
+from tritonclient.utils import deserialize_bytes_tensor, raise_error, triton_to_np_dtype
 
 
 class InferResult:
@@ -188,10 +183,6 @@ class InferResult:
                                     # need to decode the raw bytes to convert into
                                     # array elements.
                                     np_array = deserialize_bytes_tensor(
-                                        self._buffer[start_index:end_index]
-                                    )
-                                elif datatype == "BF16":
-                                    np_array = deserialize_bf16_tensor(
                                         self._buffer[start_index:end_index]
                                     )
                                 else:

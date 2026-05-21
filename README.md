@@ -213,6 +213,7 @@ under-development version).
 
 ```bash
 $ git checkout main
+$ mkdir -p build && cd build
 ```
 
 If building the Java client you must first install Maven and a JDK
@@ -223,13 +224,24 @@ the `default-jdk` package:
 $ apt-get install default-jdk maven
 ```
 
-Building on Windows vs. non-Windows requires different invocations
-because Triton on Windows does not yet support all the build options.
-
-#### Non-Windows
-
 Use *cmake* to configure the build. You should adjust the flags depending on
 the components of Triton Client you are working and would like to build.
+
+```
+cmake \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_INSTALL_PREFIX=$(pwd)/install \
+  -DTRITON_ENABLE_CC_HTTP=ON \
+  -DTRITON_ENABLE_CC_GRPC=ON \
+  -DTRITON_ENABLE_PYTHON_HTTP=ON \
+  -DTRITON_ENABLE_PYTHON_GRPC=ON \
+  -DTRITON_ENABLE_JAVA_HTTP=ON \
+  -DTRITON_ENABLE_EXAMPLES=ON \
+  -DTRITON_ENABLE_TESTS=ON \
+  -DTRITON_ENABLE_GPU=ON \
+  -DTRITON_ENABLE_ZLIB=ON \
+  ..
+```
 
 If you are building on a release branch (or on a development branch
 that is based off of a release branch), then you must also use
@@ -247,56 +259,7 @@ cmake flags:
 Then use *make* to build the clients and examples.
 
 ```
-$ make cc-clients python-clients java-clients
-```
-
-When the build completes the libraries and examples can be found in
-the install directory.
-
-#### Windows
-
-To build the clients you must install an appropriate C++ compiler and
-other dependencies required for the build. The easiest way to do this
-is to create the [Windows min Docker
-image](https://github.com/triton-inference-server/server/blob/main/docs/customization_guide/build.md#windows-10-min-image)
-and the perform the build within a container launched from that image.
-
-```
-> docker run  -it --rm win10-py3-min powershell
-```
-
-It is not necessary to use Docker or the win10-py3-min container for
-the build, but if you do not you must install the appropriate
-dependencies onto your host system.
-
-Next use *cmake* to configure the build. If you are not building
-within the win10-py3-min container then you will likely need to adjust
-the CMAKE_TOOLCHAIN_FILE location in the following command.
-
-```
-$ mkdir build
-$ cd build
-$ cmake -DVCPKG_TARGET_TRIPLET=x64-windows -DCMAKE_TOOLCHAIN_FILE='/vcpkg/scripts/buildsystems/vcpkg.cmake' -DCMAKE_INSTALL_PREFIX=install -DTRITON_ENABLE_CC_GRPC=ON -DTRITON_ENABLE_PYTHON_GRPC=ON -DTRITON_ENABLE_GPU=OFF -DTRITON_ENABLE_EXAMPLES=ON -DTRITON_ENABLE_TESTS=ON ..
-```
-
-If you are building on a release branch (or on a development branch
-that is based off of a release branch), then you must also use
-additional cmake arguments to point to that release branch for repos
-that the client build depends on. For example, if you are building the
-r21.10 client branch then you need to use the following additional
-cmake flags:
-
-```
--DTRITON_COMMON_REPO_TAG=r21.10
--DTRITON_THIRD_PARTY_REPO_TAG=r21.10
--DTRITON_CORE_REPO_TAG=r21.10
-```
-
-Then use msbuild.exe to build.
-
-```
-$ msbuild.exe cc-clients.vcxproj -p:Configuration=Release -clp:ErrorsOnly
-$ msbuild.exe python-clients.vcxproj -p:Configuration=Release -clp:ErrorsOnly
+$ make -j$(nproc)/ cc-clients python-clients java-clients
 ```
 
 When the build completes the libraries and examples can be found in
@@ -515,6 +478,7 @@ examples demonstrate how to infer with AsyncIO.
 
 
 ### Request Cancellation
+#### Python gRPC client
 
 Starting from r23.10, triton python gRPC client can issue cancellation
 to inflight requests. This can be done by calling `cancel()` on the
@@ -559,6 +523,61 @@ asynchronous iterator returned by `stream_infer()` API.
 
 See more details about these APIs in
 [grpc/aio/\__init__.py](src/python/library/tritonclient/grpc/aio/__init__.py).
+
+#### C++ gRPC client
+
+Starting from r26.05, triton python C++ client can issue cancellation to
+inflight requests. This can be done by passing an optional
+`CallContext** ctx_out` to `AsyncInfer()`; the returned `CallContext` exposes
+`Cancel()`.
+
+```cpp
+  tc::CallContext* ctx = nullptr;
+  client->AsyncInfer(
+      callback, options, inputs, outputs,
+      /*headers=*/{}, GRPC_COMPRESS_NONE, &ctx);
+  ctx->Cancel();
+  delete ctx;
+```
+
+For batch fan-out via `AsyncInferMulti()`, pass an optional
+`std::vector<CallContext*>* ctxs_out`; on return it is sized to `inputs.size()`
+with one `CallContext` per leaf request (or `nullptr` for any request that
+failed locally before the RPC started). Cancellation is per-request — siblings
+continue to completion, and the multi callback still fires exactly once.
+
+```cpp
+  std::vector<tc::CallContext*> ctxs;
+  client->AsyncInferMulti(
+      multi_callback, options, inputs, outputs,
+      /*headers=*/{}, GRPC_COMPRESS_NONE, &ctxs);
+  for (auto* ctx : ctxs) {
+    if (ctx != nullptr) {
+      ctx->Cancel();
+    }
+  }
+  for (auto* ctx : ctxs) {
+    delete ctx;
+  }
+```
+
+For streaming requests, pass `true` to `StopStream()`. Cancelling after the
+RPC has completed is a safe no-op. The caller owns the returned `CallContext`
+and must `delete` it. Call sites that omit `ctx_out` keep the previous,
+non-cancellable behavior.
+
+```cpp
+  client->StartStream(callback, ...);
+  for (...) {
+    client->AsyncStreamInfer(options, inputs, outputs);
+  }
+  client->StopStream(/*cancel_requests=*/true);
+```
+
+See more details about these APIs in
+[grpc_client.h](src/c++/library/grpc_client.h).
+
+#### Server-side behavior
 
 See [request_cancellation](https://github.com/triton-inference-server/server/blob/main/docs/user_guide/request_cancellation.md)
 in the server user-guide to learn about how this is handled on the

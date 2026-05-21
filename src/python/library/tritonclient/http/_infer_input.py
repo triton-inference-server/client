@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -25,14 +25,9 @@
 # OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
 import numpy as np
-from tritonclient.utils import (
-    np_to_triton_dtype,
-    raise_error,
-    serialize_bf16_tensor,
-    serialize_byte_tensor,
-    triton_to_np_dtype,
-)
+from tritonclient.utils import np_to_triton_dtype, raise_error, serialize_byte_tensor
 
 
 class InferInput:
@@ -129,22 +124,14 @@ class InferInput:
         """
         if not isinstance(input_tensor, (np.ndarray,)):
             raise_error("input_tensor must be a numpy array")
-        # DLIS-3986: Special handling for bfloat16 until Numpy officially supports it
-        if self._datatype == "BF16":
-            if input_tensor.dtype != triton_to_np_dtype(self._datatype):
-                raise_error(
-                    "got unexpected datatype {} from numpy array, expected {} for BF16 type".format(
-                        input_tensor.dtype, triton_to_np_dtype(self._datatype)
-                    )
-                )
-        else:
-            dtype = np_to_triton_dtype(input_tensor.dtype)
-            if self._datatype != dtype:
-                raise_error(
-                    "got unexpected datatype {} from numpy array, expected {}".format(
-                        dtype, self._datatype
-                    )
-                )
+
+        dtype = np_to_triton_dtype(input_tensor.dtype)
+        if self._datatype != dtype:
+            error_message = f"got unexpected datatype {dtype} from numpy array, expected {self._datatype}."
+            if self._datatype == "BF16":
+                error_message += " Since r26.06, BF16 inputs must use ml_dtypes.bfloat16 instead of np.float32 truncation; create a numpy array with `np.array(data, dtype=ml_dtypes.bfloat16)`."
+            raise_error(error_message)
+
         valid_shape = True
         if len(self._shape) != len(input_tensor.shape):
             valid_shape = False
@@ -198,12 +185,6 @@ class InferInput:
             self._data = None
             if self._datatype == "BYTES":
                 serialized_output = serialize_byte_tensor(input_tensor)
-                if serialized_output.size > 0:
-                    self._raw_data = serialized_output.item()
-                else:
-                    self._raw_data = b""
-            elif self._datatype == "BF16":
-                serialized_output = serialize_bf16_tensor(input_tensor)
                 if serialized_output.size > 0:
                     self._raw_data = serialized_output.item()
                 else:

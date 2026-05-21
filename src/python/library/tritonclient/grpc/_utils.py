@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -116,12 +116,8 @@ def _get_inference_request(
 
     if parameters:
         for key, value in parameters.items():
-            if (
-                key == "sequence_id"
-                or key == "sequence_start"
-                or key == "sequence_end"
-                or key == "priority"
-                or key == "binary_data_output"
+            if key in TRITON_RESERVED_REQUEST_PARAMS or key.startswith(
+                TRITON_RESERVED_REQUEST_PARAMS_PREFIX
             ):
                 raise_error(
                     f'Parameter "{key}" is a reserved parameter and cannot be specified.'

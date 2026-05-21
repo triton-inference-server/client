@@ -29,7 +29,12 @@ import struct
 from urllib.parse import quote_plus
 
 import rapidjson as json
-from tritonclient.utils import InferenceServerException, raise_error
+from tritonclient.utils import (
+    TRITON_RESERVED_REQUEST_PARAMS,
+    TRITON_RESERVED_REQUEST_PARAMS_PREFIX,
+    InferenceServerException,
+    raise_error,
+)
 
 
 def _get_error(response):
@@ -118,12 +123,8 @@ def _get_inference_request(
 
     if custom_parameters:
         for key, value in custom_parameters.items():
-            if (
-                key == "sequence_id"
-                or key == "sequence_start"
-                or key == "sequence_end"
-                or key == "priority"
-                or key == "binary_data_output"
+            if key in TRITON_RESERVED_REQUEST_PARAMS or key.startswith(
+                TRITON_RESERVED_REQUEST_PARAMS_PREFIX
             ):
                 raise_error(
                     f'Parameter "{key}" is a reserved parameter and cannot be specified.'

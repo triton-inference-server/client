@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -124,22 +124,14 @@ class InferInput:
         """
         if not isinstance(input_tensor, (np.ndarray,)):
             raise_error("input_tensor must be a numpy array")
-        # DLIS-3986: Special handling for bfloat16 until Numpy officially supports it
-        if self._input.datatype == "BF16":
-            if input_tensor.dtype != triton_to_np_dtype(self._input.datatype):
-                raise_error(
-                    "got unexpected datatype {} from numpy array, expected {} for BF16 type".format(
-                        input_tensor.dtype, triton_to_np_dtype(self._input.datatype)
-                    )
-                )
-        else:
-            dtype = np_to_triton_dtype(input_tensor.dtype)
-            if self._input.datatype != dtype:
-                raise_error(
-                    "got unexpected datatype {} from numpy array, expected {}".format(
-                        dtype, self._input.datatype
-                    )
-                )
+
+        dtype = np_to_triton_dtype(input_tensor.dtype)
+        if self._input.datatype != dtype:
+            error_message = f"got unexpected datatype {dtype} from numpy array, expected {self._input.datatype}."
+            if self._input.datatype == "BF16":
+                error_message += " Since r26.06, BF16 inputs must use ml_dtypes.bfloat16 instead of np.float32 truncation; create a numpy array with `np.array(data, dtype=ml_dtypes.bfloat16)`."
+            raise_error(error_message)
+
         valid_shape = True
         if len(self._input.shape) != len(input_tensor.shape):
             valid_shape = False
@@ -159,12 +151,6 @@ class InferInput:
 
         if self._input.datatype == "BYTES":
             serialized_output = serialize_byte_tensor(input_tensor)
-            if serialized_output.size > 0:
-                self._raw_content = serialized_output.item()
-            else:
-                self._raw_content = b""
-        elif self._input.datatype == "BF16":
-            serialized_output = serialize_bf16_tensor(input_tensor)
             if serialized_output.size > 0:
                 self._raw_content = serialized_output.item()
             else:
