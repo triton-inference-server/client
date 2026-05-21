@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -36,10 +36,10 @@ from tritonclient.grpc import *
 from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
 from ... import _auth as auth
+from .._infer_result import InferResult
+from .._client import InferenceServerClientBase, KeepAliveOptions, MAX_GRPC_MESSAGE_SIZE
 from ..._plugin import InferenceServerClientPlugin
 from ..._request import Request
-from .._client import MAX_GRPC_MESSAGE_SIZE, InferenceServerClientBase, KeepAliveOptions
-from .._infer_result import InferResult
 from .._utils import (
     _get_inference_request,
     _grpc_compression_type,
