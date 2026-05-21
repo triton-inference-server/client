@@ -36,10 +36,10 @@ from tritonclient.grpc import *
 from tritonclient.grpc import model_config_pb2, service_pb2, service_pb2_grpc
 
 from ... import _auth as auth
-from .._infer_result import InferResult
 from ..._plugin import InferenceServerClientPlugin
 from ..._request import Request
 from .._client import MAX_GRPC_MESSAGE_SIZE, InferenceServerClientBase, KeepAliveOptions
+from .._infer_result import InferResult
 from .._utils import (
     _get_inference_request,
     _grpc_compression_type,
