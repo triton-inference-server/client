@@ -85,7 +85,7 @@ class InferResult:
                 elif len(output.contents.bytes_contents) != 0:
                     np_array = np.array(output.contents.bytes_contents, copy=False)
                 else:
-                    np_array = np.empty(0)
+                    np_array = np.empty(0, dtype=triton_to_np_dtype(datatype))
                 np_array = np_array.reshape(shape)
                 return np_array
             else:
