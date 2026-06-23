@@ -7,6 +7,6 @@
     "@grpc/proto-loader": "^0.8.0"
   },
   "overrides": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "^7.6.4"
   }
 }
