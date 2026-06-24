@@ -4,9 +4,9 @@
   "description": "Simple gRPC client for NVIDIA Triton in Node.js",
   "dependencies": {
     "@grpc/grpc-js": "^1.8.20",
-    "@grpc/proto-loader": "^0.8.0"
+    "@grpc/proto-loader": "^0.8.1"
   },
   "overrides": {
-    "protobufjs": "^7.5.5"
+    "protobufjs": "^8.6.5"
   }
 }
