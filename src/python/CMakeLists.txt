@@ -49,21 +49,38 @@ endif()
 #
 # Dependencies
 #
-include(FetchContent)
 
-FetchContent_Declare(
-  repo-common
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
-  GIT_SHALLOW ON
-)
+if(TRITON_COMMON_SOURCE_DIR)
+  # Conan mode: common (proto-py-library, grpc-service-py-library) already
+  # added by the parent CMakeLists.txt via add_subdirectory(${TRITON_COMMON_SOURCE_DIR}).
+  #
+  # build_wheel.py looks for generated proto .py files via the FetchContent
+  # convention: ../_deps/repo-common-build/protobuf/ (relative to the library
+  # binary dir).  In Conan mode the actual path is repo-common_BINARY_DIR.
+  # Create a compatibility symlink so the script finds the files without change.
+  file(MAKE_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/_deps")
+  if(NOT EXISTS "${CMAKE_CURRENT_BINARY_DIR}/_deps/repo-common-build")
+    file(CREATE_LINK "${repo-common_BINARY_DIR}"
+         "${CMAKE_CURRENT_BINARY_DIR}/_deps/repo-common-build" SYMBOLIC)
+  endif()
+else()
+  # Legacy mode: fetch repo-common from GitHub.
+  include(FetchContent)
 
-if(TRITON_ENABLE_PYTHON_GRPC)
-  set(TRITON_COMMON_ENABLE_PROTOBUF ON)
-  set(TRITON_COMMON_ENABLE_GRPC ON)
-endif() # TRITON_ENABLE_PYTHON_GRPC
+  FetchContent_Declare(
+    repo-common
+    GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
+    GIT_TAG ${TRITON_COMMON_REPO_TAG}
+    GIT_SHALLOW ON
+  )
 
-FetchContent_MakeAvailable(repo-common)
+  if(TRITON_ENABLE_PYTHON_GRPC)
+    set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+    set(TRITON_COMMON_ENABLE_GRPC ON)
+  endif() # TRITON_ENABLE_PYTHON_GRPC
+
+  FetchContent_MakeAvailable(repo-common)
+endif()
 
 #
 # CUDA

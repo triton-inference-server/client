@@ -57,39 +57,56 @@ endif()
 #
 # Dependencies
 #
-include(FetchContent)
 
-FetchContent_Declare(
-  repo-common
-  GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
-  GIT_TAG ${TRITON_COMMON_REPO_TAG}
-  GIT_SHALLOW ON
-)
+if(TRITON_COMMON_SOURCE_DIR)
+  # Conan mode: common (triton-common-json, proto targets) already added by
+  # the parent CMakeLists.txt via add_subdirectory(${TRITON_COMMON_SOURCE_DIR}).
+  # GTest comes from the Conan-provided package; create a compatibility alias
+  # for the legacy lowercase 'gtest' target name used by tests/.
+  if(TRITON_ENABLE_TESTS)
+    if(NOT TARGET GTest::gtest)
+      find_package(GTest REQUIRED)
+    endif()
+    if(NOT TARGET gtest)
+      add_library(gtest ALIAS GTest::gtest)
+    endif()
+  endif()
+else()
+  # Legacy mode: fetch repo-common and googletest from the network.
+  include(FetchContent)
 
-FetchContent_Declare(
-  googletest
-  URL https://github.com/google/googletest/archive/9406a60c7839052e4944ea4dbc8344762a89f9bd.zip
-)
-
-if(TRITON_ENABLE_CC_GRPC)
-  set(TRITON_COMMON_ENABLE_PROTOBUF ON)
-  set(TRITON_COMMON_ENABLE_GRPC ON)
-endif() # TRITON_ENABLE_CC_GRPC
-
-if(NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_ENABLE_EXAMPLES)
-  set(TRITON_COMMON_ENABLE_JSON OFF)
-endif()
-
-if(TRITON_ENABLE_TESTS)
-  FetchContent_MakeAvailable(googletest)
-endif()
-FetchContent_MakeAvailable(repo-common)
-
-if(TRITON_ENABLE_TESTS)
-  include_directories(
-    ${repo-common_SOURCE_DIR}/include
+  FetchContent_Declare(
+    repo-common
+    GIT_REPOSITORY ${TRITON_REPO_ORGANIZATION}/common.git
+    GIT_TAG ${TRITON_COMMON_REPO_TAG}
+    GIT_SHALLOW ON
   )
-endif() # TRITON_ENABLE_TESTS
+
+  FetchContent_Declare(
+    googletest
+    URL https://github.com/google/googletest/archive/9406a60c7839052e4944ea4dbc8344762a89f9bd.zip
+  )
+
+  if(TRITON_ENABLE_CC_GRPC)
+    set(TRITON_COMMON_ENABLE_PROTOBUF ON)
+    set(TRITON_COMMON_ENABLE_GRPC ON)
+  endif() # TRITON_ENABLE_CC_GRPC
+
+  if(NOT TRITON_ENABLE_CC_HTTP AND NOT TRITON_ENABLE_EXAMPLES)
+    set(TRITON_COMMON_ENABLE_JSON OFF)
+  endif()
+
+  if(TRITON_ENABLE_TESTS)
+    FetchContent_MakeAvailable(googletest)
+  endif()
+  FetchContent_MakeAvailable(repo-common)
+
+  if(TRITON_ENABLE_TESTS)
+    include_directories(
+      ${repo-common_SOURCE_DIR}/include
+    )
+  endif() # TRITON_ENABLE_TESTS
+endif()
 
 #
 # CUDA
@@ -124,6 +141,15 @@ if(TRITON_ENABLE_CC_GRPC)
   message(STATUS "Using gRPC ${gRPC_VERSION}")
   include_directories($<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
 endif() # TRITON_ENABLE_CC_GRPC
+
+# RapidJSON headers are used via json_utils.h which is compiled directly into
+# several example executables via $<TARGET_OBJECTS:json-utils-library>.
+# Use include_directories() here so the path is inherited by all subdirs
+# (library/, examples/, tests/), matching the pattern used for protobuf above.
+if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_EXAMPLES)
+  find_package(RapidJSON CONFIG REQUIRED)
+  include_directories(${RapidJSON_INCLUDE_DIRS})
+endif()
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
   add_subdirectory(library)
