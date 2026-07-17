@@ -75,7 +75,7 @@ if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_EXAMPLES)
     target_compile_options(
       ${_json_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -Werror -Wno-error=deprecated-declarations>
+        -Wall -Wextra -Werror>
       $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
@@ -141,7 +141,7 @@ if(NOT WIN32)
     target_compile_options(
       ${_shm_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -Werror -Wno-error=deprecated-declarations>
+        -Wall -Wextra -Werror>
       $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
@@ -262,7 +262,7 @@ if(TRITON_ENABLE_CC_GRPC)
     target_compile_options(
       ${_client_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -Werror -Wno-error=deprecated-declarations>
+        -Wall -Wextra -Werror>
       $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
@@ -443,7 +443,7 @@ if(TRITON_ENABLE_CC_HTTP)
     target_compile_options(
       ${_client_target} PRIVATE
       $<$<OR:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_ID:AppleClang>,$<CXX_COMPILER_ID:GNU>>:
-        -Wall -Wextra -Werror -Wno-error=deprecated-declarations>
+        -Wall -Wextra -Werror>
       $<$<CXX_COMPILER_ID:MSVC>:/W0 /D_WIN32_WINNT=0x0A00 /EHsc>
     )
 
