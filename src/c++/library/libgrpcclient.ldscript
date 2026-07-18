@@ -28,6 +28,14 @@
     extern "C++" {
       triton::client*;
       inference*;
+      # protobuf v33's public message headers (exposed to consumers via the
+      # exported 'inference*' generated types) inline abseil CHECK/LOG(FATAL)
+      # calls. On aarch64 the inlined fast-path parser
+      # google::protobuf::internal::VarintParseSlowArm pulls these into the
+      # consumer translation unit, so a program linking only -lgrpcclient
+      # against this .so must be able to resolve the abseil log_internal
+      # symbols. Export them (glob keeps it version-string agnostic).
+      absl::*log_internal*;
     };
   local: *;
 };
