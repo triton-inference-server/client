@@ -1,4 +1,4 @@
-// Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+// Copyright 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -24,6 +24,9 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+#include <google/protobuf/text_format.h>
+
+#include <algorithm>
 #include <fstream>
 
 #define TRITON_INFERENCE_SERVER_CLIENT_CLASS InferenceServerHttpClient
@@ -234,7 +237,11 @@ class GRPCTraceTest : public ::testing::Test {
   void ConvertResponse(
       const inference::TraceSettingResponse& response, std::string* str)
   {
-    *str = response.DebugString();
+    // Use TextFormat::PrintToString rather than DebugString(): protobuf v33
+    // deliberately makes DebugString() output unstable (it injects a
+    // "goo.gle/debugstr" marker) to discourage parsing, which breaks the
+    // string comparisons below. PrintToString gives stable text format.
+    google::protobuf::TextFormat::PrintToString(response, str);
     str->erase(std::remove(str->begin(), str->end(), ' '), str->end());
     str->erase(std::remove(str->begin(), str->end(), '\n'), str->end());
   }
