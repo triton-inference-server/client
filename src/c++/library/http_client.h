@@ -634,7 +634,9 @@ class InferenceServerHttpClient : public InferenceServerClient {
       void* contents, size_t size, size_t nmemb, void* userp);
 
   // The server url
-  const std::string url_;
+  std::string url_;
+  // The server unix socket
+  std::string unix_socket_;
   // The options for authorizing and authenticating SSL/TLS connections
   HttpSslOptions ssl_options_;
 
