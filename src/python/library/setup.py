@@ -43,7 +43,13 @@ if "VERSION" not in os.environ:
 VERSION = os.environ["VERSION"]
 
 try:
-    from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
+    # setuptools >= 70.1 ships an integrated bdist_wheel. Prefer it over the
+    # standalone 'wheel' package, which is deprecated and caps the generated
+    # wheel metadata at Metadata-Version 2.1.
+    try:
+        from setuptools.command.bdist_wheel import bdist_wheel as _bdist_wheel
+    except ImportError:
+        from wheel.bdist_wheel import bdist_wheel as _bdist_wheel
 
     class bdist_wheel(_bdist_wheel):
         def finalize_options(self):
