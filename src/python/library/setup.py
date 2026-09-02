@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -92,8 +92,12 @@ setup(
     """for package details.\n\nThe [client examples](https://github.com/triton-inference-server/client/tree/main/src/python/examples) demonstrate how to use the """
     """package to issue request to [triton inference server](https://github.com/triton-inference-server/server).""",
     long_description_content_type="text/markdown",
-    license="BSD",
-    url="https://developer.nvidia.com/nvidia-triton-inference-server",
+    license="BSD-3-Clause",
+    project_urls={
+        "Homepage": "https://developer.nvidia.com/nvidia-triton-inference-server",
+        "Source": "https://github.com/triton-inference-server/client",
+        "Bug Tracker": "https://github.com/triton-inference-server/server/issues",
+    },
     keywords=[
         "grpc",
         "http",
@@ -115,15 +119,15 @@ setup(
         "Topic :: Scientific/Engineering :: Artificial Intelligence",
         "Topic :: Software Development :: Libraries",
         "Topic :: Utilities",
-        "License :: OSI Approved :: BSD License",
         "Programming Language :: Python :: 3",
-        "Programming Language :: Python :: 3.6",
-        "Programming Language :: Python :: 3.7",
-        "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
         "Environment :: Console",
         "Natural Language :: English",
         "Operating System :: OS Independent",
     ],
+    python_requires=">=3.12",
     install_requires=install_requires,
     extras_require=extras_require,
     packages=find_packages(),
