@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2020, NVIDIA CORPORATION. All rights reserved.
+// Copyright (c) 2019-2026, NVIDIA CORPORATION. All rights reserved.
 //
 // Redistribution and use in source and binary forms, with or without
 // modification, are permitted provided that the following conditions
@@ -38,6 +38,7 @@ import (
 	triton "github.com/triton-inference-server/client/src/grpc_generated/go/grpc-client"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 const (
@@ -202,8 +203,11 @@ func main() {
 	FLAGS := parseFlags()
 	fmt.Println("FLAGS:", FLAGS)
 
-	// Connect to gRPC server
-	conn, err := grpc.Dial(FLAGS.URL, grpc.WithInsecure())
+	// Connect to gRPC server. This example targets a local Triton instance, so
+	// the transport is deliberately plaintext; swap in credentials.NewTLS for
+	// a remote endpoint.
+	conn, err := grpc.NewClient(
+		FLAGS.URL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Couldn't connect to endpoint %s: %v", FLAGS.URL, err)
 	}
