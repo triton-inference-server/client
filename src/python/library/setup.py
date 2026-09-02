@@ -126,7 +126,7 @@ setup(
     ],
     install_requires=install_requires,
     extras_require=extras_require,
-    packages=find_packages(),
+    packages=find_packages(exclude=["tests", "tests.*"]),
     package_data={
         "": platform_package_data,
     },
