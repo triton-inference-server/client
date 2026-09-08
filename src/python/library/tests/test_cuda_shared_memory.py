@@ -42,7 +42,7 @@ class DLPackTest(unittest.TestCase):
     def test_from_gpu(self):
         # Create GPU tensor via PyTorch and CUDA shared memory region with
         # enough space
-        gpu_tensor = torch.ones(4, 4).cuda(0)
+        gpu_tensor = torch.ones(1, 4, 4).cuda(0)
         byte_size = 64
         shm_handle = cudashm.create_shared_memory_region("cudashm_data", byte_size, 0)
 
@@ -51,7 +51,7 @@ class DLPackTest(unittest.TestCase):
 
         # Make sure the DLPack specification of the shared memory region can
         # be consumed by PyTorch
-        smt = cudashm.as_shared_memory_tensor(shm_handle, "FP32", [4, 4])
+        smt = cudashm.as_shared_memory_tensor(shm_handle, "FP32", [1, 4, 4])
         generated_torch_tensor = torch.from_dlpack(smt)
         self.assertTrue(torch.allclose(gpu_tensor, generated_torch_tensor))
 
