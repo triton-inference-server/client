@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2020-2025, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2020-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -78,10 +78,6 @@ extras_require["all"] = list(chain(extras_require.values()))
 
 platform_package_data = []
 
-data_files = [
-    ("", ["LICENSE.txt"]),
-]
-
 setup(
     name="tritonclient",
     version=VERSION,
@@ -132,5 +128,4 @@ setup(
     },
     zip_safe=False,
     cmdclass={"bdist_wheel": bdist_wheel},
-    data_files=data_files,
 )
