@@ -79,7 +79,16 @@ Homepage = "https://developer.nvidia.com/nvidia-triton-inference-server"
 path = "hatch_build.py"
 
 [tool.hatch.build.targets.wheel]
-packages = ["tritonclient"]
+# build_wheel.py stages the retained compatibility namespaces alongside
+# tritonclient; they must be listed explicitly or installs of this wheel
+# break `import tritonhttpclient` and friends with ModuleNotFoundError.
+packages = [
+    "tritonclient",
+    "tritonclientutils",
+    "tritongrpcclient",
+    "tritonhttpclient",
+    "tritonshmutils",
+]
 
 [build-system]
 requires = ["hatchling==1.27.0"]
