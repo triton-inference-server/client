@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2021-2024, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2021-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -166,7 +166,8 @@ if __name__ == "__main__":
         )
 
     shutil.copyfile("LICENSE.txt", os.path.join(FLAGS.whl_dir, "LICENSE.txt"))
-    shutil.copyfile("setup.py", os.path.join(FLAGS.whl_dir, "setup.py"))
+    shutil.copyfile("pyproject.toml", os.path.join(FLAGS.whl_dir, "pyproject.toml"))
+    shutil.copyfile("hatch_build.py", os.path.join(FLAGS.whl_dir, "hatch_build.py"))
     cpdir("requirements", os.path.join(FLAGS.whl_dir, "requirements"))
 
     os.chdir(FLAGS.whl_dir)
@@ -174,12 +175,16 @@ if __name__ == "__main__":
     wenv["VERSION"] = FLAGS.triton_version
 
     print("=== Building wheel")
+    # PEP 517 build (python -m build) so the pinned hatchling version in
+    # pyproject.toml's [build-system] is installed into an isolated env and
+    # used deterministically, instead of whatever build backend happens to
+    # be preinstalled in the build image. See TRI-1775.
     p = subprocess.Popen(
-        ["python3", "setup.py", "bdist_wheel"],
+        ["python3", "-m", "build", "--wheel"],
         env=wenv,
     )
     p.wait()
-    fail_if(p.returncode != 0, "setup.py failed")
+    fail_if(p.returncode != 0, "Building wheel failed")
     cpdir("dist", FLAGS.dest_dir)
 
     print("=== Output wheel file is in: {}".format(FLAGS.dest_dir))
