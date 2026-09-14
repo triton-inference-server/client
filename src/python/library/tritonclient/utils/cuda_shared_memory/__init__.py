@@ -162,10 +162,15 @@ def get_raw_handle(cuda_shm_handle):
         in base64 encoding.
 
     """
-    # 'reserved' in shared memory handle is not well documented but experiment
-    # showed that it is the equivalent handle used in
-    # cudaIpcOpenMemHandle (C API)
-    return base64.b64encode(cuda_shm_handle._cuda_shm_handle.reserved)
+    # The raw bytes of the handle are the equivalent handle used in
+    # cudaIpcOpenMemHandle (C API). cuda-bindings >= 13 dropped the
+    # 'reserved' attribute from cudaIpcMemHandle_t, exposing only
+    # getPtr() (the address of the underlying CUDA_IPC_HANDLE_SIZE-byte
+    # struct), so the bytes must be read through that pointer instead.
+    handle_bytes = (ctypes.c_char * cudart.CUDA_IPC_HANDLE_SIZE).from_address(
+        cuda_shm_handle._cuda_shm_handle.getPtr()
+    )
+    return base64.b64encode(bytes(handle_bytes))
 
 
 def set_shared_memory_region(cuda_shm_handle, input_values):
