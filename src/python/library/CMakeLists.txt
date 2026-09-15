@@ -1,4 +1,4 @@
-# Copyright (c) 2020-2025, NVIDIA CORPORATION. All rights reserved.
+# Copyright (c) 2020-2026, NVIDIA CORPORATION. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -45,13 +45,15 @@ endif() # NOT WIN32
 
 file(WRITE ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION ${TRITON_VERSION})
 configure_file(LICENSE.txt LICENSE.txt COPYONLY)
-configure_file(setup.py setup.py @ONLY)
+configure_file(pyproject.toml pyproject.toml COPYONLY)
+configure_file(hatch_build.py hatch_build.py COPYONLY)
 file(COPY requirements DESTINATION .)
 
 set(WHEEL_DEPENDS
       ${CMAKE_CURRENT_BINARY_DIR}/TRITON_VERSION
       ${CMAKE_CURRENT_BINARY_DIR}/LICENSE.txt
-      ${CMAKE_CURRENT_BINARY_DIR}/setup.py
+      ${CMAKE_CURRENT_BINARY_DIR}/pyproject.toml
+      ${CMAKE_CURRENT_BINARY_DIR}/hatch_build.py
 )
 
 if(${TRITON_ENABLE_PYTHON_GRPC})
