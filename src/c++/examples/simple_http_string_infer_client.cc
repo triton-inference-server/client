@@ -248,7 +248,7 @@ main(int argc, char** argv)
 
 
   for (size_t i = 0; i < 16; ++i) {
-    std::cout << input0_data[i] << " + " << input0_data[i] << " = "
+    std::cout << input0_data[i] << " + " << input1_data[i] << " = "
               << result0_data[i] << std::endl;
     std::cout << input0_data[i] << " - " << input1_data[i] << " = "
               << result1_data[i] << std::endl;
