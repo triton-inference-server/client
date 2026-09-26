@@ -107,13 +107,18 @@ class InferenceServerClient(InferenceServerClientBase):
         conn_timeout=60.0,
         ssl=False,
         ssl_context=None,
+        keepalive_timeout=15.0,
     ):
         super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
             raise_error("url should not include the scheme")
         scheme = "https://" if ssl else "http://"
         self._url = scheme + (url if url[-1] != "/" else url[:-1])
-        self._conn = aiohttp.TCPConnector(ssl=ssl_context, limit=conn_limit)
+        self._conn = aiohttp.TCPConnector(
+            ssl=ssl_context,
+            limit=conn_limit,
+            keepalive_timeout=keepalive_timeout,
+        )
         self._stub = aiohttp.ClientSession(
             connector=self._conn,
             timeout=aiohttp.ClientTimeout(total=conn_timeout),
