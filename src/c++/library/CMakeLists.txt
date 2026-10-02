@@ -245,7 +245,7 @@ if(TRITON_ENABLE_CC_GRPC)
        grpcclient
        PROPERTIES
          LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript
-         LINK_FLAGS "-Wl,--version-script=libgrpcclient.ldscript"
+         LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libgrpcclient.ldscript"
      )
   endif() # NOT WIN32 AND NOT TRITON_KEEP_TYPEINFO
 
@@ -427,7 +427,7 @@ if(TRITON_ENABLE_CC_HTTP)
        httpclient
        PROPERTIES
          LINK_DEPENDS ${CMAKE_CURRENT_BINARY_DIR}/libhttpclient.ldscript
-         LINK_FLAGS "-Wl,--version-script=libhttpclient.ldscript"
+         LINK_FLAGS "-Wl,--version-script=${CMAKE_CURRENT_BINARY_DIR}/libhttpclient.ldscript"
      )
   endif() # NOT WIN32
 
