@@ -77,6 +77,10 @@ a network service.
   shared-memory modules.
 * Java HTTP client (`src/java`), Rust client (`src/rust/triton-client`), and
   generated gRPC bindings for Go, Java and JavaScript (`src/grpc_generated`).
+* Perf Analyzer packaging: `src/c++/perf_analyzer` and the
+  `TRITON_PACKAGE_PERF_ANALYZER` build option (default OFF), which includes
+  Perf Analyzer in the pip wheel. Perf Analyzer itself is not analyzed in this
+  document.
 * Example programs and tests under the `examples` and `tests` directories.
 
 **Primary security responsibility:** correct and safe handling of data
@@ -105,15 +109,18 @@ application and server they connect to.
 
 1. **Eavesdropping or tampering on unencrypted connections.** Both the HTTP
    and gRPC clients default to plaintext (`ssl=False` in the Python clients;
-   the C++ clients use TLS only when `use_ssl` is set). Inference inputs,
+   the C++ gRPC client uses TLS only when `use_ssl` is set, and the C++ HTTP
+   client only when the server URL begins with `https://`). Inference inputs,
    outputs and request headers, including any credentials a caller places in
    them, can be read or modified by a network attacker.
 
 2. **Man-in-the-middle through weakened TLS verification.** The C++ HTTP
-   client exposes `SslOptions::verify_peer` and `verify_host`
-   (`http_client.cc`, passed to libcurl), and the Python HTTP client exposes an
+   client exposes `HttpSslOptions::verify_peer` and `verify_host` (default 1
+   and 2; `http_client.cc`, passed to libcurl), and the Python HTTP client exposes an
    `insecure` flag and caller-supplied `ssl_options`. Callers who disable
-   verification, or omit a CA bundle, allow server impersonation.
+   verification allow server impersonation. Omitting an explicit CA bundle
+   falls back to the default trust store of libcurl or gRPC rather than
+   disabling verification.
 
 3. **Malicious or compromised server response.** Client code decodes
    server-controlled data: JSON and binary-tensor payloads in
@@ -146,8 +153,9 @@ application and server they connect to.
 ## Critical Security Assumptions
 
 * **The network path is trusted unless TLS is enabled by the caller.** The
-  libraries do not enable TLS by default. Callers must enable it and supply
-  appropriate CA certificates for any untrusted network.
+  libraries do not enable TLS by default. Callers must enable it (an `https://`
+  URL for the C++ HTTP client, `use_ssl` for the C++ gRPC client) and, where the
+  default trust store is not appropriate, supply the correct CA certificates.
 * **Authentication and authorization are performed by the server or proxy.**
   The clients provide no credential management. They only pass headers or
   channel credentials supplied by the caller.
