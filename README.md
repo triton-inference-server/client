@@ -476,6 +476,32 @@ Advanced users may call the Python client via `async` and `await` syntax. The
 [stream](src/python/examples/simple_grpc_aio_sequence_stream_infer_client.py)
 examples demonstrate how to infer with AsyncIO.
 
+#### Reusing a Request Across Retries (Python)
+
+`infer()` copies the input tensor data into a new request every time it is
+called. When a client retries a failed request, for example while a model is
+being reloaded, that copy is repeated on every attempt. For large inputs the
+request can instead be built once with `build_infer_request()` and sent with
+`infer_request()` as many times as needed. Once built, the `InferInput`
+objects are no longer needed and can be released.
+
+```python
+  request = triton_client.build_infer_request("simple", inputs, outputs=outputs)
+  del inputs  # the tensor data now lives only in the request
+  for attempt in range(3):
+      try:
+          result = triton_client.infer_request(request)
+          break
+      except InferenceServerException as e:
+          if e.status() != "StatusCode.UNAVAILABLE":
+              raise
+          time.sleep(1)
+```
+
+`build_infer_request()` and `infer_request()` are available on both the
+`tritonclient.grpc` and `tritonclient.grpc.aio` clients. Treat the returned
+request as read-only if it is going to be re-sent.
+
 
 ### Request Cancellation
 #### Python gRPC client
