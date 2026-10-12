@@ -113,9 +113,7 @@ if(TRITON_ENABLE_CC_GRPC)
   set(protobuf_MODULE_COMPATIBLE TRUE CACHE BOOL "protobuf_MODULE_COMPATIBLE" FORCE)
   find_package(Protobuf CONFIG REQUIRED)
   message(STATUS "Using protobuf ${Protobuf_VERSION}")
-  # SYSTEM so header-internal deprecation warnings in protobuf do not
-  # fail the -Werror build.
-  include_directories(SYSTEM ${Protobuf_INCLUDE_DIRS})
+  include_directories(${Protobuf_INCLUDE_DIRS})
 endif() # TRITON_ENABLE_CC_GRPC
 
 #
@@ -124,10 +122,7 @@ endif() # TRITON_ENABLE_CC_GRPC
 if(TRITON_ENABLE_CC_GRPC)
   find_package(gRPC CONFIG REQUIRED)
   message(STATUS "Using gRPC ${gRPC_VERSION}")
-  # SYSTEM so header-internal deprecation warnings in gRPC do not fail
-  # the -Werror build.
-  include_directories(
-    SYSTEM $<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
+  include_directories($<TARGET_PROPERTY:gRPC::grpc,INTERFACE_INCLUDE_DIRECTORIES>)
 endif() # TRITON_ENABLE_CC_GRPC
 
 if(TRITON_ENABLE_CC_HTTP OR TRITON_ENABLE_CC_GRPC)
