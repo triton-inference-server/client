@@ -47,7 +47,7 @@ from tritonclient.http import InferInput, InferRequestedOutput
 from ..._client import InferenceServerClientBase
 from ..._plugin import InferenceServerClientPlugin
 from ..._request import Request
-from .._infer_result import InferResult, _DEFAULT_MAX_RESPONSE_SIZE
+from .._infer_result import _DEFAULT_MAX_RESPONSE_SIZE, InferResult
 from .._utils import _get_inference_request, _get_query_string
 
 
