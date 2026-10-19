@@ -39,7 +39,7 @@ from tritonclient.utils import raise_error
 
 from .._client import InferenceServerClientBase
 from .._request import Request
-from ._infer_result import InferResult
+from ._infer_result import InferResult, _DEFAULT_MAX_RESPONSE_SIZE
 from ._utils import _get_inference_request, _get_query_string, _raise_if_error
 
 
@@ -56,11 +56,16 @@ class InferAsyncRequest:
 
     verbose : bool
         If True generate verbose output. Default value is False.
+    max_response_size : int
+        Maximum decompressed response size in bytes. Default value is 32 MiB.
     """
 
-    def __init__(self, greenlet, verbose=False):
+    def __init__(
+        self, greenlet, verbose=False, max_response_size=_DEFAULT_MAX_RESPONSE_SIZE
+    ):
         self._greenlet = greenlet
         self._verbose = verbose
+        self._max_response_size = max_response_size
 
     def get_result(self, block=True, timeout=None):
         """Get the results of the associated asynchronous inference.
@@ -96,7 +101,7 @@ class InferAsyncRequest:
             raise_error("failed to obtain inference response")
 
         _raise_if_error(response)
-        return InferResult(response, self._verbose)
+        return InferResult(response, self._verbose, self._max_response_size)
 
 
 class InferenceServerClient(InferenceServerClientBase):
@@ -152,6 +157,9 @@ class InferenceServerClient(InferenceServerClientBase):
         If True, then does not match the host name with the certificate.
         Default value is False. The argument is ignored if 'ssl' is
         specified False.
+    max_response_size : int
+        Maximum decompressed inference response size in bytes. Default value
+        is 32 MiB. Increase this for models with larger responses.
 
     Raises
     ------
@@ -172,6 +180,7 @@ class InferenceServerClient(InferenceServerClientBase):
         ssl_options=None,
         ssl_context_factory=None,
         insecure=False,
+        max_response_size=_DEFAULT_MAX_RESPONSE_SIZE,
     ):
         super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
@@ -190,6 +199,7 @@ class InferenceServerClient(InferenceServerClientBase):
         )
         self._pool = gevent.pool.Pool(max_greenlets)
         self._verbose = verbose
+        self._max_response_size = max_response_size
         self._closed = False
 
     def __enter__(self):
@@ -1302,7 +1312,11 @@ class InferenceServerClient(InferenceServerClientBase):
 
     @staticmethod
     def parse_response_body(
-        response_body, verbose=False, header_length=None, content_encoding=None
+        response_body,
+        verbose=False,
+        header_length=None,
+        content_encoding=None,
+        max_response_size=_DEFAULT_MAX_RESPONSE_SIZE,
     ):
         """Generate a :py:class:`InferResult` object from the given 'response_body'
 
@@ -1318,6 +1332,8 @@ class InferenceServerClient(InferenceServerClientBase):
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
+        max_response_size : int
+            Maximum decompressed response size in bytes. Default value is 32 MiB.
 
         Returns
         -------
@@ -1325,7 +1341,7 @@ class InferenceServerClient(InferenceServerClientBase):
             The InferResult object generated from the response body
         """
         return InferResult.from_response_body(
-            response_body, verbose, header_length, content_encoding
+            response_body, verbose, header_length, content_encoding, max_response_size
         )
 
     def infer(
@@ -1481,7 +1497,7 @@ class InferenceServerClient(InferenceServerClientBase):
         )
         _raise_if_error(response)
 
-        return InferResult(response, self._verbose)
+        return InferResult(response, self._verbose, self._max_response_size)
 
     def async_infer(
         self,
@@ -1656,4 +1672,4 @@ class InferenceServerClient(InferenceServerClientBase):
                 verbose_message = verbose_message + " '{}'".format(request_id)
             print(verbose_message)
 
-        return InferAsyncRequest(g, self._verbose)
+        return InferAsyncRequest(g, self._verbose, self._max_response_size)
