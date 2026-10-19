@@ -47,7 +47,7 @@ from tritonclient.http import InferInput, InferRequestedOutput
 from ..._client import InferenceServerClientBase
 from ..._plugin import InferenceServerClientPlugin
 from ..._request import Request
-from .._infer_result import InferResult
+from .._infer_result import _DEFAULT_MAX_RESPONSE_SIZE, InferResult
 from .._utils import _get_inference_request, _get_query_string
 
 
@@ -97,6 +97,25 @@ class InferenceServerClient(InferenceServerClientBase):
     thread and simultaneously calling methods with different threads is not
     supported and can cause undefined behavior.
 
+    Parameters
+    ----------
+    url : str
+        The inference server name, port and optional base path in the format
+        host:port/<base-path>, for example 'localhost:8000'.
+    verbose : bool
+        If True generate verbose output. Default value is False.
+    conn_limit : int
+        Maximum number of simultaneous connections. Default value is 100.
+    conn_timeout : float
+        Total request timeout in seconds. Default value is 60.0.
+    ssl : bool
+        If True use SSL encrypted secure channel. Default is False.
+    ssl_context : ssl.SSLContext
+        Optional SSL context passed to the HTTP connector. Default value is None.
+    max_response_size : int
+        Maximum decompressed inference response size in bytes. Default value
+        is 32 MiB. Increase this for models with larger responses.
+
     """
 
     def __init__(
@@ -107,6 +126,7 @@ class InferenceServerClient(InferenceServerClientBase):
         conn_timeout=60.0,
         ssl=False,
         ssl_context=None,
+        max_response_size=_DEFAULT_MAX_RESPONSE_SIZE,
     ):
         super().__init__()
         if url.startswith("http://") or url.startswith("https://"):
@@ -120,6 +140,7 @@ class InferenceServerClient(InferenceServerClientBase):
             auto_decompress=False,
         )
         self._verbose = verbose
+        self._max_response_size = max_response_size
 
     async def __aenter__(self):
         return self
@@ -684,11 +705,15 @@ class InferenceServerClient(InferenceServerClientBase):
 
     @staticmethod
     def parse_response_body(
-        response_body, verbose=False, header_length=None, content_encoding=None
+        response_body,
+        verbose=False,
+        header_length=None,
+        content_encoding=None,
+        max_response_size=_DEFAULT_MAX_RESPONSE_SIZE,
     ):
         """Refer to :py:meth:`tritonclient.http.InferenceServerClient.parse_response_body`"""
         return InferResult.from_response_body(
-            response_body, verbose, header_length, content_encoding
+            response_body, verbose, header_length, content_encoding, max_response_size
         )
 
     async def infer(
@@ -771,5 +796,9 @@ class InferenceServerClient(InferenceServerClientBase):
         response_body = await response.read()
 
         return InferResult.from_response_body(
-            response_body, self._verbose, header_length, content_encoding
+            response_body,
+            self._verbose,
+            header_length,
+            content_encoding,
+            self._max_response_size,
         )

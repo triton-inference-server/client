@@ -26,11 +26,14 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 import gzip
+import io
 import zlib
 
 import numpy as np
 import rapidjson as json
 from tritonclient.utils import deserialize_bytes_tensor, raise_error, triton_to_np_dtype
+
+_DEFAULT_MAX_RESPONSE_SIZE = 32 * 1024 * 1024
 
 
 class InferResult:
@@ -44,9 +47,11 @@ class InferResult:
         The inference response from the server
     verbose : bool
         If True generate verbose output. Default value is False.
+    max_response_size : int
+        Maximum decompressed response size in bytes. Default value is 32 MiB.
     """
 
-    def __init__(self, response, verbose):
+    def __init__(self, response, verbose, max_response_size=_DEFAULT_MAX_RESPONSE_SIZE):
         header_length = response.get("Inference-Header-Content-Length")
 
         # Internal class that simulate the interface of 'response'
@@ -64,11 +69,26 @@ class InferResult:
                     return self.decompressed_data_[prev_offset : self.offset_]
 
         content_encoding = response.get("Content-Encoding")
-        if content_encoding is not None:
+        if content_encoding in ("gzip", "deflate"):
+            if type(max_response_size) is not int or max_response_size <= 0:
+                raise_error("max_response_size must be a positive integer")
+            # Read one byte beyond the limit to detect oversized responses.
             if content_encoding == "gzip":
-                response = DecompressedResponse(gzip.decompress(response.read()))
-            elif content_encoding == "deflate":
-                response = DecompressedResponse(zlib.decompress(response.read()))
+                with gzip.GzipFile(
+                    fileobj=io.BytesIO(response.read()), mode="rb"
+                ) as stream:
+                    decompressed = stream.read(max_response_size + 1)
+            else:
+                stream = zlib.decompressobj()
+                decompressed = stream.decompress(response.read(), max_response_size + 1)
+                if len(decompressed) <= max_response_size and not stream.eof:
+                    raise_error("Incomplete deflate response")
+            if len(decompressed) > max_response_size:
+                raise_error(
+                    f"Decompressed response exceeds max_response_size "
+                    f"({max_response_size} bytes)"
+                )
+            response = DecompressedResponse(decompressed)
         if header_length is None:
             content = response.read()
             if verbose:
@@ -102,7 +122,12 @@ class InferResult:
 
     @classmethod
     def from_response_body(
-        cls, response_body, verbose=False, header_length=None, content_encoding=None
+        cls,
+        response_body,
+        verbose=False,
+        header_length=None,
+        content_encoding=None,
+        max_response_size=_DEFAULT_MAX_RESPONSE_SIZE,
     ):
         """A class method to construct :py:class:`InferResult` object
         from a given 'response_body'.
@@ -119,6 +144,8 @@ class InferResult:
         content_encoding : string
             The encoding of the response body if it is compressed.
             Default value is None.
+        max_response_size : int
+            Maximum decompressed response size in bytes. Default value is 32 MiB.
 
         Returns
         -------
@@ -147,7 +174,11 @@ class InferResult:
                     self.offset_ += length
                     return self.response_body_[prev_offset : self.offset_]
 
-        return cls(Response(response_body, header_length, content_encoding), verbose)
+        return cls(
+            Response(response_body, header_length, content_encoding),
+            verbose,
+            max_response_size,
+        )
 
     def as_numpy(self, name):
         """Get the tensor data for output associated with this object
