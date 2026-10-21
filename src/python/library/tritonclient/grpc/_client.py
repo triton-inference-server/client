@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -1536,12 +1536,7 @@ class InferenceServerClient(InferenceServerClientBase):
         InferenceServerException
             If server fails to perform inference.
         """
-        metadata = self._get_metadata(headers)
-
-        if type(model_version) != str:
-            raise_error("model version must be a string")
-
-        request = _get_inference_request(
+        request = self.build_infer_request(
             model_name=model_name,
             inputs=inputs,
             model_version=model_version,
@@ -1554,6 +1549,142 @@ class InferenceServerClient(InferenceServerClientBase):
             timeout=timeout,
             parameters=parameters,
         )
+        return self.infer_request(
+            request,
+            client_timeout=client_timeout,
+            headers=headers,
+            compression_algorithm=compression_algorithm,
+        )
+
+    @staticmethod
+    def build_infer_request(
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        parameters=None,
+    ):
+        """Build an inference request without sending it. The returned
+        request can be sent, and re-sent on retry, with
+        :py:meth:`infer_request`, so the input tensor data is copied into
+        the request only once. Once the request is built, the 'inputs'
+        are no longer needed and can be released.
+
+        Parameters
+        ----------
+        model_name: str
+            The name of the model to run inference.
+        inputs : list
+            A list of :py:class:`InferInput` objects, each describing data for a input
+            tensor required by the model.
+        model_version : str
+            The version of the model to run inference. The default value
+            is an empty string which means then the server will choose
+            a version based on the model and internal policy.
+        outputs : list
+            A list of :py:class:`InferRequestedOutput` objects, each describing how the output
+            data must be returned. If not specified all outputs produced
+            by the model will be returned using default settings.
+        request_id : str
+            Optional identifier for the request. If specified will be returned
+            in the response. Default value is an empty string which means no
+            request_id will be used.
+        sequence_id : int
+            The unique identifier for the sequence being represented by the
+            object. Default value is 0 which means that the request does not
+            belong to a sequence.
+        sequence_start : bool
+            Indicates whether the request being added marks the start of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        sequence_end : bool
+            Indicates whether the request being added marks the end of the
+            sequence. Default value is False. This argument is ignored if
+            'sequence_id' is 0.
+        priority : int
+            Indicates the priority of the request. Refer to
+            :py:meth:`infer` for details.
+        timeout : int
+            The timeout value for the request, in microseconds. Refer to
+            :py:meth:`infer` for details.
+        parameters : dict
+            Optional custom parameters to be included in the inference
+            request.
+
+        Returns
+        -------
+        ModelInferRequest
+            The protobuf message holding the inference request. Treat it
+            as read-only if it is going to be re-sent.
+
+        Raises
+        ------
+        InferenceServerException
+            If the request arguments are invalid.
+        """
+        if type(model_version) != str:
+            raise_error("model version must be a string")
+
+        return _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
+
+    def infer_request(
+        self,
+        request,
+        client_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+    ):
+        """Run synchronous inference using a request built by
+        :py:meth:`build_infer_request`. The request is not modified, so
+        the same request can be passed again to retry a failed attempt.
+
+        Parameters
+        ----------
+        request : ModelInferRequest
+            The inference request returned by :py:meth:`build_infer_request`.
+        client_timeout : float
+            The maximum end-to-end time, in seconds, the request is allowed
+            to take. The client will abort request and raise
+            InferenceServerExeption with message "Deadline Exceeded" when the
+            specified time elapses. The default value is None which means
+            client will wait for the response from the server.
+        headers : dict
+            Optional dictionary specifying additional HTTP headers to include
+            in the request.
+        compression_algorithm : str
+            Optional grpc compression algorithm to be used on client side.
+            Currently supports "deflate", "gzip" and None. By default, no
+            compression is used.
+
+        Returns
+        -------
+        InferResult
+            The object holding the result of the inference.
+
+        Raises
+        ------
+        InferenceServerException
+            If server fails to perform inference.
+        """
+        metadata = self._get_metadata(headers)
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
