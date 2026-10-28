@@ -140,7 +140,6 @@ class DataViewContext:
         py_obj = ctypes.py_object(self)
         py_obj_ptr = ctypes.pointer(py_obj)
         ctypes.pythonapi.Py_IncRef(py_obj)
-        ctypes.pythonapi.Py_IncRef(ctypes.py_object(py_obj_ptr))
         return ctypes.cast(py_obj_ptr, ctypes.c_void_p)
 
 
