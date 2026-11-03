@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-# Copyright 2022-2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2022-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -650,12 +650,7 @@ class InferenceServerClient(InferenceServerClientBase):
     ):
         """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.infer`"""
 
-        metadata = self._get_metadata(headers)
-
-        if type(model_version) != str:
-            raise_error("model version must be a string")
-
-        request = _get_inference_request(
+        request = self.build_infer_request(
             model_name=model_name,
             inputs=inputs,
             model_version=model_version,
@@ -668,6 +663,56 @@ class InferenceServerClient(InferenceServerClientBase):
             timeout=timeout,
             parameters=parameters,
         )
+        return await self.infer_request(
+            request,
+            client_timeout=client_timeout,
+            headers=headers,
+            compression_algorithm=compression_algorithm,
+        )
+
+    @staticmethod
+    def build_infer_request(
+        model_name,
+        inputs,
+        model_version="",
+        outputs=None,
+        request_id="",
+        sequence_id=0,
+        sequence_start=False,
+        sequence_end=False,
+        priority=0,
+        timeout=None,
+        parameters=None,
+    ):
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.build_infer_request`"""
+
+        if type(model_version) != str:
+            raise_error("model version must be a string")
+
+        return _get_inference_request(
+            model_name=model_name,
+            inputs=inputs,
+            model_version=model_version,
+            request_id=request_id,
+            outputs=outputs,
+            sequence_id=sequence_id,
+            sequence_start=sequence_start,
+            sequence_end=sequence_end,
+            priority=priority,
+            timeout=timeout,
+            parameters=parameters,
+        )
+
+    async def infer_request(
+        self,
+        request,
+        client_timeout=None,
+        headers=None,
+        compression_algorithm=None,
+    ):
+        """Refer to :py:meth:`tritonclient.grpc.InferenceServerClient.infer_request`"""
+
+        metadata = self._get_metadata(headers)
         if self._verbose:
             print("infer, metadata {}\n{}".format(metadata, request))
 
