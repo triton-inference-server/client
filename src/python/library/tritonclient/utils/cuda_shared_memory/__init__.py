@@ -39,6 +39,7 @@ except ModuleNotFoundError as error:
 import base64
 import ctypes
 import struct
+import threading
 
 import numpy as np
 
@@ -58,14 +59,16 @@ allocated_shm_regions = []
 # and be reused throughout the process. May revisit for stream pool if
 # asynchronous write on CUDA shared memory region is requested
 _dlpack_stream = {}
+_dlpack_stream_lock = threading.Lock()
 
 
 # Helper function to retrieve internally managed CUDA stream
 def _get_or_create_global_cuda_stream(device_id):
     global _dlpack_stream
-    if device_id not in _dlpack_stream:
-        _dlpack_stream[device_id] = CudaStream(device_id)
-    return _dlpack_stream[device_id]._stream
+    with _dlpack_stream_lock:
+        if device_id not in _dlpack_stream:
+            _dlpack_stream[device_id] = CudaStream(device_id)
+        return _dlpack_stream[device_id]._stream
 
 
 def _support_uva(shm_device_id, ext_device_id):
