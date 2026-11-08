@@ -145,9 +145,19 @@ class InferInput:
                 )
             )
 
-        self._input.parameters.pop("shared_memory_region", None)
-        self._input.parameters.pop("shared_memory_byte_size", None)
-        self._input.parameters.pop("shared_memory_offset", None)
+        # Only delete keys that are present. With the upb protobuf backend,
+        # pop() on a missing key of a message-valued map inserts a default
+        # entry before removing it, and that allocation is not released
+        # until the message itself is freed, so a reused InferInput leaks
+        # on every call.
+        parameters = self._input.parameters
+        for key in (
+            "shared_memory_region",
+            "shared_memory_byte_size",
+            "shared_memory_offset",
+        ):
+            if key in parameters:
+                del parameters[key]
 
         if self._input.datatype == "BYTES":
             serialized_output = serialize_byte_tensor(input_tensor)
