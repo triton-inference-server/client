@@ -25,6 +25,8 @@
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import unittest
+from types import SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import numpy
 
@@ -78,6 +80,23 @@ class DLPackTest(unittest.TestCase):
         )
 
         cudashm.destroy_shared_memory_region(shm_handle)
+
+    def test_host_and_capsule_use_region_device_stream(self):
+        cpu_tensor = numpy.ones(4, dtype=numpy.float32)
+        region = SimpleNamespace(_device_id=1, _base_addr=0)
+
+        for value in (cpu_tensor, cpu_tensor.__dlpack__()):
+            with self.subTest(value_type=type(value).__name__):
+                stream = MagicMock()
+                with patch.object(
+                    cudashm, "_get_or_create_global_cuda_stream", return_value=stream
+                ) as get_stream:
+                    with patch.object(cudashm, "_support_uva"), patch.object(
+                        cudashm, "call_cuda_function"
+                    ):
+                        cudashm.set_shared_memory_region_from_dlpack(region, [value])
+
+                get_stream.assert_called_once_with(1)
 
 
 class NumpyTest(unittest.TestCase):
