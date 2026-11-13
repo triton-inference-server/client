@@ -123,7 +123,7 @@ def _raise_error(msg):
     """
     Raise error with the provided message
     """
-    raise Exception(msg=msg) from None
+    raise Exception(msg) from None
 
 
 # Use as managed context in DLPack that doesn't hold ownership of the
