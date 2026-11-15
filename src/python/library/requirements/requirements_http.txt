@@ -29,3 +29,4 @@ geventhttpclient>=2.3.3
 greenlet<3.4.0 # [TRI-964] downgraded to avoid segfault in http client teardown
 numpy>=1.19.1
 python-rapidjson>=0.9.1
+urllib3>=2.0.7
