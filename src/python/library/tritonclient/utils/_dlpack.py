@@ -252,10 +252,10 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
         device = dlpack_obj.__dlpack_device__()
         # Have to condition on the device type as, using numpy as example,
         # some DLPack implementation doesn't accept 'stream' as arguments
-        if device != DLDeviceType.kDLCUDA:
+        if device[0] != DLDeviceType.kDLCUDA:
             return dlpack_obj.__dlpack__()
         else:
-            return dlpack_obj.__dlpack__(stream)
+            return dlpack_obj.__dlpack__(stream=stream)
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj
