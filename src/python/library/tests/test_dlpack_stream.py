@@ -34,7 +34,7 @@ class DLPackStreamTest(unittest.TestCase):
             def __dlpack_device__(self):
                 return (_dlpack.DLDeviceType.kDLCUDA, 0)
 
-            def __dlpack__(self, stream):
+            def __dlpack__(self, *, stream):
                 return stream
 
         self.assertEqual(_dlpack.get_dlpack_capsule(CudaProducer(), 123), 123)

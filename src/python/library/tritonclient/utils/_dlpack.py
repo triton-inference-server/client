@@ -255,7 +255,7 @@ def get_dlpack_capsule(dlpack_obj, stream=None):
         if device[0] != DLDeviceType.kDLCUDA:
             return dlpack_obj.__dlpack__()
         else:
-            return dlpack_obj.__dlpack__(stream)
+            return dlpack_obj.__dlpack__(stream=stream)
     else:
         # Old interface where PyCapsule object is passed directly
         return dlpack_obj
