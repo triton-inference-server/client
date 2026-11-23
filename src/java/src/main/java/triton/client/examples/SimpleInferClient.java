@@ -27,7 +27,6 @@
 package triton.client.examples;
 
 import com.google.common.collect.Lists;
-import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
@@ -66,33 +65,31 @@ public class SimpleInferClient {
         new InferRequestedOutput("OUTPUT0", isBinary0),
         new InferRequestedOutput("OUTPUT1", isBinary1));
 
-    InferenceServerClient client =
-        new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
-    InferResult result = client.infer("simple", inputs, outputs);
+    try (InferenceServerClient client =
+             new InferenceServerClient("0.0.0.0:8000", 5000, 5000)) {
+      InferResult result = client.infer("simple", inputs, outputs);
 
-    // Get the output arrays from the results
-    int[] op0 = result.getOutputAsInt("OUTPUT0");
-    int[] op1 = result.getOutputAsInt("OUTPUT1");
+      // Get the output arrays from the results
+      int[] op0 = result.getOutputAsInt("OUTPUT0");
+      int[] op1 = result.getOutputAsInt("OUTPUT1");
 
-    // Validate outputs
-    for (int i = 0; i < op0.length; i++) {
-      System.out.println(
-          Integer.toString(lst_0.get(i)) + " + "
-          + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op0[i]));
-      System.out.println(
-          Integer.toString(lst_0.get(i)) + " - "
-          + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op1[i]));
+      // Validate outputs
+      for (int i = 0; i < op0.length; i++) {
+        System.out.println(
+            Integer.toString(lst_0.get(i)) + " + "
+            + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op0[i]));
+        System.out.println(
+            Integer.toString(lst_0.get(i)) + " - "
+            + Integer.toString(lst_1.get(i)) + " = " + Integer.toString(op1[i]));
 
-      if (op0[i] != (lst_0.get(i) + lst_1.get(i))) {
-        System.out.println("OUTPUT0 contains incorrect sum");
-        System.exit(1);
-      }
+        if (op0[i] != (lst_0.get(i) + lst_1.get(i))) {
+          throw new IllegalStateException("OUTPUT0 contains incorrect sum");
+        }
 
-      if (op1[i] != (lst_0.get(i) - lst_1.get(i))) {
-        System.out.println("OUTPUT1 contains incorrect difference");
-        System.exit(1);
+        if (op1[i] != (lst_0.get(i) - lst_1.get(i))) {
+          throw new IllegalStateException("OUTPUT1 contains incorrect difference");
+        }
       }
     }
-    System.exit(0);
   }
 }
