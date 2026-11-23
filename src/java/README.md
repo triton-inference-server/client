@@ -76,10 +76,11 @@ public class MinExample {
         List<InferInput> inputs = Lists.newArrayList(inputIds, inputMask, segmentIds);
         List<InferRequestedOutput> outputs = Lists.newArrayList(new InferRequestedOutput("logits", isBinary));
 
-        InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000);
-        InferResult result = client.infer("roberta", inputs, outputs);
-        float[] logits = result.getOutputAsFloat("logits");
-        System.out.println(Arrays.toString(logits));
+        try (InferenceServerClient client = new InferenceServerClient("0.0.0.0:8000", 5000, 5000)) {
+            InferResult result = client.infer("roberta", inputs, outputs);
+            float[] logits = result.getOutputAsFloat("logits");
+            System.out.println(Arrays.toString(logits));
+        }
     }
 }
 ```
