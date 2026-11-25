@@ -38,7 +38,9 @@ import gzip
 import zlib
 from urllib.parse import quote
 
+import gzip
 import rapidjson as json
+import zlib
 
 # In case user try to import dependency from here
 from tritonclient.http import *
