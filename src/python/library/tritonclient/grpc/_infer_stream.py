@@ -151,8 +151,7 @@ class _InferStream:
                 result = error = None
                 if response.error_message != "":
                     error = InferenceServerException(msg=response.error_message)
-                else:
-                    result = InferResult(response.infer_response)
+                result = InferResult(response.infer_response)
                 self._callback(result=result, error=error)
         except grpc.RpcError as rpc_error:
             # On GRPC error, refresh the active state to indicate if the stream
