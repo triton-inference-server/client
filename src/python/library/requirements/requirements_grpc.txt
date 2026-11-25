@@ -24,8 +24,8 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-grpcio>=1.81.1
+grpcio>=1.85.4
 numpy>=1.19.1
 packaging>=14.1
-protobuf>=6.30.0,<7.0
+protobuf>=7.35.1,<8.0
 python-rapidjson>=0.9.1
