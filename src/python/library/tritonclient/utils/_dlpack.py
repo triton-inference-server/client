@@ -1,4 +1,4 @@
-# Copyright 2023, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
+# Copyright 2023-2026, NVIDIA CORPORATION & AFFILIATES. All rights reserved.
 #
 # Redistribution and use in source and binary forms, with or without
 # modification, are permitted provided that the following conditions
@@ -123,7 +123,7 @@ def _raise_error(msg):
     """
     Raise error with the provided message
     """
-    raise Exception(msg=msg) from None
+    raise Exception(msg) from None
 
 
 # Use as managed context in DLPack that doesn't hold ownership of the
