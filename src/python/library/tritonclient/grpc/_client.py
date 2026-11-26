@@ -256,12 +256,12 @@ class InferenceServerClient(InferenceServerClientBase):
     def __del__(self):
         self.close()
 
-    def close(self):
+    def close(self, cancel_requests=True):
         """Close the client. Any future calls to server
         will result in an Error.
 
         """
-        self.stop_stream()
+        self.stop_stream(cancel_requests)
         self._channel.close()
 
     def is_server_live(self, headers=None, client_timeout=None):
